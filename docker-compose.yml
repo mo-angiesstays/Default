@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: turnkeep
+      POSTGRES_PASSWORD: turnkeep
+      POSTGRES_DB: turnkeep
+    ports:
+      - "5432:5432"
+    volumes:
+      - turnkeep-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U turnkeep"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  turnkeep-db:

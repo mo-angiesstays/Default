@@ -1,0 +1,646 @@
+// TurnKeep — property operations platform
+// Datasource: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────
+
+enum Role {
+  MANAGER
+  CLEANER
+  MAINTENANCE
+}
+
+enum TaskType {
+  TURNOVER
+  DEEP_CLEAN
+  MAINTENANCE
+  INSPECTION
+  CUSTOM
+}
+
+enum TaskStatus {
+  UNASSIGNED
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  VERIFIED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TaskSource {
+  HOSTAWAY
+  RECURRING
+  MANUAL
+  ISSUE
+}
+
+enum ChecklistType {
+  TURNOVER
+  DEEP_CLEAN
+  MAINTENANCE
+  INSPECTION
+  CUSTOM
+}
+
+enum IssueCategory {
+  MAINTENANCE
+  DAMAGE
+  SUPPLIES
+  SAFETY
+  CLEANLINESS
+  APPLIANCE
+  OTHER
+}
+
+enum IssueSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum IssueStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum ReservationStatus {
+  NEW
+  MODIFIED
+  CANCELLED
+  INQUIRY
+  OWNER_STAY
+}
+
+enum ChannelType {
+  DIRECT
+  GROUP
+  PROPERTY
+  TASK
+  ANNOUNCEMENT
+}
+
+enum RuleKind {
+  ASSIGNMENT // who should get the work
+  TIMING // when work may/should happen
+  WORKLOAD // caps and balancing
+  ESCALATION // what to do when nothing fits
+}
+
+enum JobStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+// ─────────────────────────────────────────────────────────────
+// People
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  phone         String?
+  role          Role      @default(CLEANER)
+  passwordHash  String
+  active        Boolean   @default(true)
+  timezone      String    @default("America/New_York")
+  hourlyRate    Decimal?  @db.Decimal(10, 2)
+  // Free-form capability tags used by the scheduler, e.g. ["deep-clean","laundry","hvac"]
+  skills        String[]  @default([])
+  // Max jobs per day the scheduler will hand this person
+  maxDailyTasks Int       @default(4)
+  // Home base for travel-distance scoring
+  baseLat       Float?
+  baseLng       Float?
+  notes         String?
+  avatarColor   String    @default("#3388fb")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  availability        Availability[]
+  timeOff             TimeOff[]
+  assignedTasks       Task[]               @relation("TaskAssignee")
+  createdTasks        Task[]               @relation("TaskCreator")
+  completedItems      TaskChecklistItem[]
+  reportedIssues      Issue[]              @relation("IssueReporter")
+  resolvedIssues      Issue[]              @relation("IssueResolver")
+  issueComments       IssueComment[]
+  timeEntries         TimeEntry[]
+  chatMemberships     ChannelMember[]
+  chatMessages        ChatMessage[]
+  notifications       Notification[]
+  propertyAssignments PropertyAssignment[]
+  createdChannels     ChatChannel[]        @relation("ChannelCreator")
+  taskComments        TaskComment[]
+
+  @@index([role, active])
+}
+
+/// Weekly recurring availability window (local to the user's timezone).
+model Availability {
+  id        String @id @default(cuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 0 = Sunday … 6 = Saturday
+  dayOfWeek Int
+  /// Minutes from local midnight, e.g. 540 = 09:00
+  startMin  Int
+  endMin    Int
+
+  @@unique([userId, dayOfWeek, startMin])
+  @@index([userId])
+}
+
+model TimeOff {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startsAt  DateTime
+  endsAt    DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, startsAt, endsAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Properties
+// ─────────────────────────────────────────────────────────────
+
+model Property {
+  id           String  @id @default(cuid())
+  name         String
+  nickname     String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String  @default("US")
+  lat          Float?
+  lng          Float?
+  timezone     String  @default("America/New_York")
+  bedrooms     Int     @default(1)
+  bathrooms    Float   @default(1)
+  active       Boolean @default(true)
+
+  /// Hostaway listing id — the join key for the one-way reservation sync.
+  hostawayListingId String? @unique
+
+  /// Local times used when a reservation doesn't carry its own.
+  checkInTime  String @default("16:00")
+  checkOutTime String @default("10:00")
+
+  /// Scheduling defaults (minutes)
+  turnoverMinutes  Int @default(180)
+  deepCleanMinutes Int @default(300)
+
+  /// Day of month (1–28) a monthly deep clean should be generated for.
+  deepCleanDayOfMonth Int?    @default(1)
+  deepCleanEnabled    Boolean @default(true)
+
+  accessNotes  String?
+  parkingNotes String?
+  wifiName     String?
+  wifiPassword String?
+  supplyNotes  String?
+  color        String   @default("#61708d")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reservations       Reservation[]
+  tasks              Task[]
+  issues             Issue[]
+  checklistTemplates ChecklistTemplate[]
+  assignments        PropertyAssignment[]
+  schedulingRules    SchedulingRule[]
+  timeEntries        TimeEntry[]
+  chatChannels       ChatChannel[]
+
+  @@index([active])
+}
+
+/// Preferred / banned staff for a property. Drives scheduler scoring.
+model PropertyAssignment {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 1 = first choice, 2 = second choice, …
+  priority   Int      @default(1)
+  /// When true this person must never be scheduled here.
+  excluded   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([propertyId, userId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Reservations (one-way pull from Hostaway)
+// ─────────────────────────────────────────────────────────────
+
+model Reservation {
+  id                    String            @id @default(cuid())
+  propertyId            String
+  property              Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  hostawayReservationId String            @unique
+  hostawayListingId     String?
+  guestName             String?
+  guestEmail            String?
+  guestPhone            String?
+  channel               String?
+  status                ReservationStatus @default(NEW)
+  checkIn               DateTime
+  checkOut              DateTime
+  nights                Int               @default(1)
+  adults                Int               @default(0)
+  children              Int               @default(0)
+  pets                  Int               @default(0)
+  /// True when the next reservation checks in the same day this one checks out.
+  sameDayTurn           Boolean           @default(false)
+  raw                   Json?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  tasks Task[]
+
+  @@index([propertyId, checkOut])
+  @@index([checkOut])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Checklists
+// ─────────────────────────────────────────────────────────────
+
+model ChecklistTemplate {
+  id          String        @id @default(cuid())
+  name        String
+  type        ChecklistType
+  description String?
+  /// null = applies to every property (global default for this type)
+  propertyId  String?
+  property    Property?     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items ChecklistTemplateItem[]
+
+  @@index([type, propertyId, active])
+}
+
+model ChecklistTemplateItem {
+  id            String            @id @default(cuid())
+  templateId    String
+  template      ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  section       String            @default("General")
+  title         String
+  description   String?
+  position      Int               @default(0)
+  required      Boolean           @default(true)
+  photoRequired Boolean           @default(false)
+
+  @@index([templateId, position])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tasks
+// ─────────────────────────────────────────────────────────────
+
+model Task {
+  id          String       @id @default(cuid())
+  propertyId  String
+  property    Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  type        TaskType
+  title       String
+  description String?
+  status      TaskStatus   @default(UNASSIGNED)
+  priority    TaskPriority @default(NORMAL)
+  source      TaskSource   @default(MANUAL)
+
+  assigneeId  String?
+  assignee    User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdById String?
+  createdBy   User?   @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  reservationId String?
+  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  scheduledStart   DateTime?
+  scheduledEnd     DateTime?
+  /// Hard deadline — for a turnover this is the next guest's check-in.
+  dueAt            DateTime?
+  estimatedMinutes Int       @default(120)
+
+  startedAt       DateTime?
+  completedAt     DateTime?
+  completionNotes String?
+  verifiedAt      DateTime?
+
+  /// Set when the scheduler (AI or rules) picked the assignee, with its reasoning.
+  autoAssigned     Boolean @default(false)
+  assignmentReason String?
+  assignmentScore  Float?
+
+  /// Google Calendar mirror
+  googleEventId    String?
+  googleCalendarId String?
+  googleSyncedAt   DateTime?
+  googleSyncError  String?
+
+  /// Guard against creating two turnovers for one reservation.
+  dedupeKey String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  checklistItems  TaskChecklistItem[]
+  issuesReported  Issue[]             @relation("IssueOriginTask")
+  issuesResolving Issue[]             @relation("IssueMaintenanceTask")
+  carriedIssues   TaskIssueCarry[]
+  timeEntries     TimeEntry[]
+  comments        TaskComment[]
+  chatChannel     ChatChannel?
+
+  @@index([propertyId, scheduledStart])
+  @@index([assigneeId, status])
+  @@index([status, scheduledStart])
+  @@index([type, scheduledStart])
+}
+
+model TaskChecklistItem {
+  id            String    @id @default(cuid())
+  taskId        String
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  section       String    @default("General")
+  title         String
+  description   String?
+  position      Int       @default(0)
+  required      Boolean   @default(true)
+  photoRequired Boolean   @default(false)
+  completed     Boolean   @default(false)
+  completedAt   DateTime?
+  completedById String?
+  completedBy   User?     @relation(fields: [completedById], references: [id], onDelete: SetNull)
+  notes         String?
+  photoUrl      String?
+
+  @@index([taskId, position])
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Issues — sticky to the property until someone marks them done
+// ─────────────────────────────────────────────────────────────
+
+model Issue {
+  id          String        @id @default(cuid())
+  propertyId  String
+  property    Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  category    IssueCategory @default(MAINTENANCE)
+  severity    IssueSeverity @default(MEDIUM)
+  status      IssueStatus   @default(OPEN)
+  photoUrls   String[]      @default([])
+
+  reportedById      String?
+  reportedBy        User?   @relation("IssueReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+  /// The turnover/task the issue was first reported on.
+  originTaskId      String?
+  originTask        Task?   @relation("IssueOriginTask", fields: [originTaskId], references: [id], onDelete: SetNull)
+  /// Maintenance task opened to fix it, if any.
+  maintenanceTaskId String?
+  maintenanceTask   Task?   @relation("IssueMaintenanceTask", fields: [maintenanceTaskId], references: [id], onDelete: SetNull)
+
+  resolvedById    String?
+  resolvedBy      User?     @relation("IssueResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedAt      DateTime?
+  resolutionNotes String?
+
+  /// How many turnovers this has been carried onto — surfaced as an ageing signal.
+  carryCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  carries  TaskIssueCarry[]
+  comments IssueComment[]
+
+  @@index([propertyId, status])
+  @@index([status, severity])
+}
+
+/// Join row recording that an open issue was surfaced on a given task.
+model TaskIssueCarry {
+  id           String   @id @default(cuid())
+  issueId      String
+  issue        Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  taskId       String
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  acknowledged Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@unique([issueId, taskId])
+  @@index([taskId])
+}
+
+model IssueComment {
+  id        String   @id @default(cuid())
+  issueId   String
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  photoUrls String[] @default([])
+  createdAt DateTime @default(now())
+
+  @@index([issueId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Time clock
+// ─────────────────────────────────────────────────────────────
+
+model TimeEntry {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId      String?
+  task        Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  propertyId  String?
+  property    Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  clockInAt   DateTime
+  clockOutAt  DateTime?
+  /// Denormalised duration, filled on clock-out.
+  minutes     Int?
+  notes       String?
+  clockInLat  Float?
+  clockInLng  Float?
+  clockOutLat Float?
+  clockOutLng Float?
+  /// Manager edited the entry after the fact.
+  edited      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, clockInAt])
+  @@index([taskId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Scheduling rules (feed the AI scheduler)
+// ─────────────────────────────────────────────────────────────
+
+model SchedulingRule {
+  id          String     @id @default(cuid())
+  name        String
+  /// Plain-English rule the AI scheduler is told to honour.
+  instruction String
+  kind        RuleKind   @default(ASSIGNMENT)
+  /// null = applies to all properties
+  propertyId  String?
+  property    Property?  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  /// Only apply to these task types; empty = all types.
+  taskTypes   TaskType[] @default([])
+  /// HARD rules are enforced in code and can never be broken by the AI.
+  hard        Boolean    @default(false)
+  /// Higher weight = the scheduler tries harder to satisfy it.
+  weight      Int        @default(5)
+  active      Boolean    @default(true)
+  /// Optional machine-readable config for hard rules, e.g. {"maxPerDay":3}
+  config      Json?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([active, kind])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Chat
+// ─────────────────────────────────────────────────────────────
+
+model ChatChannel {
+  id            String      @id @default(cuid())
+  name          String?
+  type          ChannelType @default(GROUP)
+  propertyId    String?
+  property      Property?   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  taskId        String?     @unique
+  task          Task?       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  /// Stable key for direct channels: "dm:<userIdA>:<userIdB>" with ids sorted.
+  dmKey         String?     @unique
+  createdById   String?
+  createdBy     User?       @relation("ChannelCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  archived      Boolean     @default(false)
+  lastMessageAt DateTime?
+  createdAt     DateTime    @default(now())
+
+  members  ChannelMember[]
+  messages ChatMessage[]
+
+  @@index([type, lastMessageAt])
+}
+
+model ChannelMember {
+  id         String      @id @default(cuid())
+  channelId  String
+  channel    ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt DateTime?
+  muted      Boolean     @default(false)
+  joinedAt   DateTime    @default(now())
+
+  @@unique([channelId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id          String      @id @default(cuid())
+  channelId   String
+  channel     ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  body        String
+  attachments String[]    @default([])
+  /// System notices (task assigned, issue reported…) have no author.
+  system      Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  editedAt    DateTime?
+
+  @@index([channelId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Notifications + integration bookkeeping
+// ─────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String?
+  link      String?
+  kind      String    @default("info")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
+
+/// Key/value store for integration settings and cursors.
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model JobRun {
+  id         String    @id @default(cuid())
+  job        String
+  status     JobStatus @default(RUNNING)
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  summary    Json?
+  error      String?
+
+  @@index([job, startedAt])
+}
