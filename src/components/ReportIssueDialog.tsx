@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/client";
 import { ErrorNote, Field, Modal, Toggle } from "@/components/ui";
+import { PhotoCapture } from "@/components/PhotoCapture";
 
 const CATEGORIES = [
   ["MAINTENANCE", "Something needs repairing"],
@@ -61,7 +62,7 @@ export function ReportIssueDialog({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<string>("MAINTENANCE");
   const [severity, setSeverity] = useState("MEDIUM");
-  const [photoUrl, setPhotoUrl] = useState("");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [createTask, setCreateTask] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,13 +81,13 @@ export function ReportIssueDialog({
           description: description || null,
           category,
           severity,
-          photoUrls: photoUrl ? [photoUrl] : [],
+          photoUrls,
           createMaintenanceTask: createTask,
         },
       });
       setTitle("");
       setDescription("");
-      setPhotoUrl("");
+      setPhotoUrls([]);
       onCreated?.();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not report the issue");
@@ -151,12 +152,12 @@ export function ReportIssueDialog({
           />
         </Field>
 
-        <Field label="Photo link" hint="Paste a link to a photo if you have one.">
-          <input
-            className="input"
-            value={photoUrl}
-            onChange={(event) => setPhotoUrl(event.target.value)}
-            placeholder="https://…"
+        <Field label="Photos">
+          <PhotoCapture
+            value={photoUrls}
+            onChange={setPhotoUrls}
+            label="Take a photo"
+            hint="A picture saves the handyman a trip to look at it first."
           />
         </Field>
 

@@ -53,4 +53,21 @@ export const env = {
   },
 
   cronSecret: process.env.CRON_SECRET ?? "",
+
+  storage: {
+    /// "local" writes to disk; "s3" targets any S3-compatible bucket.
+    driver: (process.env.STORAGE_DRIVER ?? "local") as "local" | "s3",
+    localDir: process.env.STORAGE_LOCAL_DIR ?? "./uploads",
+    /// Cap on a single upload, after the browser has already downscaled it.
+    maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES ?? 15 * 1024 * 1024),
+    s3: {
+      bucket: process.env.S3_BUCKET ?? "",
+      region: process.env.S3_REGION ?? "us-east-1",
+      endpoint: process.env.S3_ENDPOINT ?? "",
+      accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
+      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
+      signedUrlSeconds: Number(process.env.S3_SIGNED_URL_SECONDS ?? 3600),
+    },
+  },
 };

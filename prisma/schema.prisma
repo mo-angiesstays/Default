@@ -156,6 +156,7 @@ model User {
   propertyAssignments PropertyAssignment[]
   createdChannels     ChatChannel[]        @relation("ChannelCreator")
   taskComments        TaskComment[]
+  mediaAssets         MediaAsset[]
 
   @@index([role, active])
 }
@@ -631,6 +632,30 @@ model Setting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+/// An uploaded file — in practice a photo taken by a cleaner on site.
+///
+/// The bytes live in object storage (or on local disk for a self-hosted
+/// install); this row is the record of what was uploaded and by whom. Nothing
+/// stores a storage URL directly: callers reference `/api/media/<id>`, which
+/// checks the session and then streams or redirects. That keeps buckets
+/// private and means a rotated bucket never invalidates existing rows.
+model MediaAsset {
+  id           String   @id @default(cuid())
+  /// Path within the storage bucket / upload directory.
+  storageKey   String   @unique
+  contentType  String
+  bytes        Int
+  width        Int?
+  height       Int?
+  /// Original filename from the device, for download and debugging.
+  filename     String?
+  uploadedById String?
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([uploadedById, createdAt])
 }
 
 model JobRun {

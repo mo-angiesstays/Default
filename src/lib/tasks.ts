@@ -184,11 +184,37 @@ export function labelForType(type: TaskType): string {
   }
 }
 
-/** Blocking checklist items that must be ticked before a task can complete. */
-export async function outstandingRequiredItems(taskId: string) {
-  return prisma.taskChecklistItem.findMany({
-    where: { taskId, required: true, completed: false },
-    select: { id: true, title: true, section: true },
+export type OutstandingItem = {
+  id: string;
+  title: string;
+  section: string;
+  /** Why it's blocking: unticked, or ticked but missing its required photo. */
+  reason: "unticked" | "photo";
+};
+
+/**
+ * Checklist items blocking completion — either not ticked, or ticked without
+ * the photo the item asks for. A photo prompt that nobody has to satisfy is
+ * just decoration, so an item marked photoRequired holds the task open until
+ * there's an actual picture attached.
+ */
+export async function outstandingRequiredItems(taskId: string): Promise<OutstandingItem[]> {
+  const items = await prisma.taskChecklistItem.findMany({
+    where: {
+      taskId,
+      OR: [
+        { required: true, completed: false },
+        { photoRequired: true, photoUrl: null },
+      ],
+    },
+    select: { id: true, title: true, section: true, completed: true, required: true },
     orderBy: { position: "asc" },
   });
+
+  return items.map((item) => ({
+    id: item.id,
+    title: item.title,
+    section: item.section,
+    reason: item.required && !item.completed ? "unticked" : "photo",
+  }));
 }

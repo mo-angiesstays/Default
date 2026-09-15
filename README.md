@@ -21,7 +21,8 @@ written back to Hostaway.
 property, with sections, required items and photo prompts. A property-specific
 checklist overrides the global default of the same type. Tasks snapshot their
 checklist at creation, so editing a template never rewrites work already out with
-a cleaner. A job can't be completed while a required item is unticked.
+a cleaner. A job can't be completed while a required item is unticked, or while an
+item that asks for a photo doesn't have one.
 
 **Monthly deep cleans.** Generated automatically on each property's chosen day of
 the month, moved to the first free day when a guest is in residence, and skipped
@@ -30,11 +31,21 @@ entirely when a month has no gap. Re-running the generator never duplicates.
 **Maintenance.** Standalone maintenance jobs, plus jobs opened automatically from
 high and urgent issue reports.
 
-**Issues that stick to the property.** A cleaner reports a problem; it attaches to
-the current task *and* to every future task at that property. It reappears on each
-turnover, with a count of how many visits it has been carried onto, until a cleaner
-or handyman marks it completed. Resolving it detaches it from upcoming work and
-closes the maintenance job opened for it.
+**Issues that stick to the property.** A cleaner reports a problem — with photos
+taken on the spot — and it attaches to the current task *and* to every future task
+at that property. It reappears on each turnover, with a count of how many visits it
+has been carried onto, until a cleaner or handyman marks it completed. Resolving it
+detaches it from upcoming work and closes the maintenance job opened for it.
+
+**Photos, taken on site.** Every photo control opens the phone's rear camera
+directly. Pictures are downscaled and re-encoded in the browser before upload,
+because a modern phone shoots 8–12MB per frame and the people using this are often
+standing in a rural property on one bar of signal — a typical room photo lands
+around 300KB and uploads in a second or two. EXIF rotation is applied so nothing
+arrives sideways, and a failed upload keeps the photo on screen with a retry button
+rather than losing it. Checklist items can *require* a photo: the task will not
+complete until one is attached. Photos attach to issue reports, issue comments,
+proof-of-fix on a resolution, and individual checklist items.
 
 **Scheduling rules + AI.** Write rules the way you'd say them: *"Maria is first
 choice for the beach houses"*, *"don't send anyone across town twice in one day"*.
@@ -106,6 +117,10 @@ and the app degrades cleanly without it — Settings shows what is and isn't wir
 | `GOOGLE_IMPERSONATE_USER` | **Required for invites.** A Workspace user the service account may impersonate via domain-wide delegation. Without it events are created but attendees are never invited — Settings warns about this. |
 | `ANTHROPIC_API_KEY` | Turns on AI-assisted assignment. Without it, rule scoring alone. |
 | `CRON_SECRET` | Lets an external scheduler run the nightly pipeline without a login. |
+| `STORAGE_DRIVER` | `local` (default) or `s3`. |
+| `STORAGE_LOCAL_DIR` | Where the local driver writes. Point at a mounted volume on container hosts — most wipe the filesystem on redeploy. |
+| `S3_BUCKET` / `S3_REGION` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | For the `s3` driver. Works with AWS S3, Cloudflare R2, MinIO and Backblaze B2. |
+| `S3_ENDPOINT` / `S3_FORCE_PATH_STYLE` | Needed for R2, MinIO and other non-AWS gateways. |
 
 ### Keeping it running
 
@@ -146,6 +161,7 @@ src/lib/
   scheduler/ai.ts             the model's decision, validated against that layer
   scheduler/index.ts          propose / apply / bulk-assign
   tasks.ts                    task creation, checklist snapshot, issue carry-over
+  storage/                    photo storage: local disk or any S3-compatible bucket
 src/app/api/                  REST endpoints
 src/app/(app)/                screens
 ```
@@ -167,9 +183,29 @@ is passed as data the model weighs, never as instructions it follows.
 should say clears `googleSyncedAt`. Comparing `updatedAt` against it instead would
 re-push every task on every run and mail a fresh invite to everyone each time.
 
+*Photos are private by default and no storage URL is ever persisted.* Rows
+reference `/api/media/<id>`; that route checks the session, then streams from disk
+or hands back a short-lived signed S3 URL. Buckets stay private, a leaked storage
+path is worth nothing on its own, and rotating a bucket doesn't invalidate existing
+rows. Uploads are validated by magic number rather than the declared content type,
+and served with `nosniff` and a locked-down CSP so a file that slipped through
+couldn't execute as script.
+
 ## Not included
 
-- Uploading photos — issue and checklist photos take a URL. Wire up S3 or similar
-  if you want direct capture from a phone.
+- **Offline capture queue.** A failed upload can be retried from the screen, but
+  closing the tab loses it. A cleaner in a basement with no signal has to come back
+  up. Making this fully offline means a service worker plus IndexedDB.
+- **Server-side image processing.** No thumbnail generation or EXIF stripping —
+  the browser re-encodes to JPEG via canvas, which drops EXIF as a side effect, but
+  an original passed through unconverted (an exotic format the browser can't decode)
+  keeps its metadata, GPS included.
 - Push notifications. Notifications are in-app; the tables are there to build on.
 - Payroll export from the time clock.
+
+### A note on upload size limits
+
+Photos are compressed client-side, so uploads are normally well under a megabyte.
+If you deploy somewhere with a request body cap (Vercel's is 4.5MB) and want to
+accept originals unprocessed, you'd want presigned direct-to-bucket uploads instead
+of posting through the app — the storage driver interface is the place to add it.

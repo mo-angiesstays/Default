@@ -19,6 +19,7 @@ import {
 } from "@/lib/labels";
 import { Avatar, Chip, ErrorNote, LocalTime, ProgressBar, Spinner } from "@/components/ui";
 import { ReportIssueButton } from "@/components/ReportIssueDialog";
+import { PhotoCapture, PhotoStrip } from "@/components/PhotoCapture";
 import { AssignPanel } from "@/components/AssignPanel";
 
 type ChecklistItem = {
@@ -30,6 +31,7 @@ type ChecklistItem = {
   photoRequired: boolean;
   completed: boolean;
   notes: string | null;
+  photoUrl: string | null;
   completedBy: { name: string } | null;
   completedAt: string | null;
 };
@@ -46,6 +48,7 @@ type CarriedIssue = {
     category: string;
     carryCount: number;
     createdAt: string;
+    photoUrls: string[];
     reportedBy: { name: string } | null;
   };
 };
@@ -120,9 +123,13 @@ export function TaskDetailView({
 
   const done = task.checklistItems.filter((item) => item.completed).length;
   const total = task.checklistItems.length;
-  const requiredOpen = task.checklistItems.filter(
+  const untickedRequired = task.checklistItems.filter(
     (item) => item.required && !item.completed,
   ).length;
+  const missingPhotos = task.checklistItems.filter(
+    (item) => item.photoRequired && !item.photoUrl,
+  ).length;
+  const blockers = untickedRequired + missingPhotos;
 
   const sections = [...new Set(task.checklistItems.map((item) => item.section))];
   const openIssues = task.carriedIssues.filter((carry) => carry.issue.status !== "RESOLVED");
@@ -251,15 +258,24 @@ export function TaskDetailView({
               <button
                 type="button"
                 className="btn-primary"
-                disabled={busy || requiredOpen > 0}
+                disabled={busy || blockers > 0}
                 title={
-                  requiredOpen > 0
-                    ? `${requiredOpen} required checklist item(s) still open`
+                  blockers > 0
+                    ? [
+                        untickedRequired ? `${untickedRequired} item(s) still open` : null,
+                        missingPhotos ? `${missingPhotos} item(s) still need a photo` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
                     : undefined
                 }
                 onClick={() => setStatus("COMPLETED")}
               >
-                {requiredOpen > 0 ? `${requiredOpen} item(s) left` : "Mark complete"}
+                {blockers > 0
+                  ? missingPhotos && !untickedRequired
+                    ? `${missingPhotos} photo${missingPhotos === 1 ? "" : "s"} needed`
+                    : `${blockers} item${blockers === 1 ? "" : "s"} left`
+                  : "Mark complete"}
               </button>
             ) : null}
             {!["COMPLETED", "VERIFIED", "CANCELLED", "BLOCKED"].includes(task.status) ? (
@@ -345,35 +361,15 @@ export function TaskDetailView({
                 {task.checklistItems
                   .filter((item) => item.section === section)
                   .map((item) => (
-                    <li key={item.id} className="flex items-start gap-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={item.completed}
-                        disabled={!canWork || busy}
-                        onChange={() => toggleItem(item)}
-                        className="mt-0.5 h-5 w-5 shrink-0 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={`text-sm ${
-                            item.completed ? "text-ink-400 line-through" : "text-ink-900"
-                          }`}
-                        >
-                          {item.title}
-                          {item.required ? null : (
-                            <span className="ml-1 text-xs text-ink-400">(optional)</span>
-                          )}
-                        </p>
-                        {item.description ? (
-                          <p className="text-xs text-ink-500">{item.description}</p>
-                        ) : null}
-                        {item.completed && item.completedBy ? (
-                          <p className="text-xs text-ink-400">
-                            {item.completedBy.name} · <LocalTime value={item.completedAt} format="time" />
-                          </p>
-                        ) : null}
-                      </div>
-                    </li>
+                    <ChecklistRow
+                      key={item.id}
+                      taskId={task.id}
+                      item={item}
+                      canWork={canWork}
+                      busy={busy}
+                      onToggle={() => toggleItem(item)}
+                      onChanged={() => mutate()}
+                    />
                   ))}
               </ul>
             </div>
@@ -428,6 +424,89 @@ export function TaskDetailView({
   );
 }
 
+/**
+ * One checklist line. An item flagged photoRequired shows a camera button and
+ * keeps the task open until a picture is attached — the flag is a real gate,
+ * not a suggestion.
+ */
+function ChecklistRow({
+  taskId,
+  item,
+  canWork,
+  busy,
+  onToggle,
+  onChanged,
+}: {
+  taskId: string;
+  item: ChecklistItem;
+  canWork: boolean;
+  busy: boolean;
+  onToggle: () => void;
+  onChanged: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const needsPhoto = item.photoRequired && !item.photoUrl;
+
+  const setPhoto = async (urls: string[]) => {
+    setSaving(true);
+    try {
+      await api(`/api/tasks/${taskId}/checklist/${item.id}`, {
+        method: "PATCH",
+        json: { photoUrl: urls[0] ?? null },
+      });
+      onChanged();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <li className="flex items-start gap-3 py-2">
+      <input
+        type="checkbox"
+        checked={item.completed}
+        disabled={!canWork || busy}
+        onChange={onToggle}
+        className="mt-0.5 h-5 w-5 shrink-0 rounded border-ink-300 text-brand-600 focus:ring-brand-500"
+      />
+      <div className="min-w-0 flex-1">
+        <p className={`text-sm ${item.completed ? "text-ink-400 line-through" : "text-ink-900"}`}>
+          {item.title}
+          {item.required ? null : <span className="ml-1 text-xs text-ink-400">(optional)</span>}
+          {needsPhoto ? (
+            <span className="ml-1.5 chip bg-amber-100 text-amber-800 ring-amber-200">
+              📷 photo needed
+            </span>
+          ) : null}
+        </p>
+        {item.description ? <p className="text-xs text-ink-500">{item.description}</p> : null}
+
+        {item.photoRequired && canWork ? (
+          <div className="mt-1.5">
+            <PhotoCapture
+              value={item.photoUrl ? [item.photoUrl] : []}
+              onChange={setPhoto}
+              max={1}
+              disabled={saving}
+              label="Photo"
+            />
+          </div>
+        ) : item.photoUrl ? (
+          <div className="mt-1.5">
+            <PhotoStrip urls={[item.photoUrl]} size={56} />
+          </div>
+        ) : null}
+
+        {item.completed && item.completedBy ? (
+          <p className="mt-1 text-xs text-ink-400">
+            {item.completedBy.name} · <LocalTime value={item.completedAt} format="time" />
+          </p>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
 function IssueRow({
   carry,
   canResolve,
@@ -439,12 +518,21 @@ function IssueRow({
 }) {
   const [busy, setBusy] = useState(false);
   const [notes, setNotes] = useState("");
+  const [proof, setProof] = useState<string[]>([]);
   const [expanded, setExpanded] = useState(false);
   const issue = carry.issue;
 
   const resolve = async () => {
     setBusy(true);
     try {
+      // An "after" photo goes on the issue as a comment, so the original
+      // report and the proof of the fix sit side by side in its history.
+      if (proof.length) {
+        await api(`/api/issues/${issue.id}/comments`, {
+          method: "POST",
+          json: { body: notes || "Fixed — photo attached.", photoUrls: proof },
+        });
+      }
       await api(`/api/issues/${issue.id}`, {
         method: "PATCH",
         json: { status: "RESOLVED", resolutionNotes: notes || undefined },
@@ -470,6 +558,11 @@ function IssueRow({
       {issue.description ? (
         <p className="text-sm text-ink-600">{issue.description}</p>
       ) : null}
+      {issue.photoUrls.length ? (
+        <div className="mt-1.5">
+          <PhotoStrip urls={issue.photoUrls} size={56} />
+        </div>
+      ) : null}
       <p className="mt-1 text-xs text-ink-400">
         Reported by {issue.reportedBy?.name ?? "someone"} ·{" "}
         <LocalTime value={issue.createdAt} format="relative" />
@@ -483,6 +576,13 @@ function IssueRow({
               placeholder="What did you do to fix it?"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+            />
+            <PhotoCapture
+              value={proof}
+              onChange={setProof}
+              max={3}
+              label="Photo of the fix"
+              hint="Optional, but it settles any question about whether it was done."
             />
             <div className="flex gap-2">
               <button type="button" className="btn-primary" disabled={busy} onClick={resolve}>

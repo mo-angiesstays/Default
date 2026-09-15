@@ -13,6 +13,7 @@ import {
 } from "@/lib/labels";
 import { Avatar, Chip, EmptyState, ErrorNote, LocalTime, Modal, Spinner } from "@/components/ui";
 import { ReportIssueDialog } from "@/components/ReportIssueDialog";
+import { PhotoCapture, PhotoStrip } from "@/components/PhotoCapture";
 
 type Issue = {
   id: string;
@@ -139,6 +140,24 @@ export function IssuesView({ viewer }: { viewer: { id: string; role: Role } }) {
                 </div>
                 <p className="mt-1.5 font-medium text-ink-900">{issue.title}</p>
                 <p className="truncate text-sm text-ink-500">{issue.property.name}</p>
+                {issue.photoUrls.length ? (
+                  <div className="mt-1.5 flex gap-1">
+                    {issue.photoUrls.slice(0, 4).map((url) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={url}
+                        src={url}
+                        alt=""
+                        className="h-10 w-10 rounded border border-ink-200 object-cover"
+                      />
+                    ))}
+                    {issue.photoUrls.length > 4 ? (
+                      <span className="flex h-10 w-10 items-center justify-center rounded border border-ink-200 text-xs text-ink-500">
+                        +{issue.photoUrls.length - 4}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
                 <p className="mt-1 text-xs text-ink-400">
                   {issue.reportedBy?.name ?? "Someone"} ·{" "}
                   <LocalTime value={issue.createdAt} format="relative" />
@@ -191,6 +210,7 @@ function IssueDetailModal({
   onChanged: () => void;
 }) {
   const [notes, setNotes] = useState("");
+  const [proof, setProof] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -200,6 +220,14 @@ function IssueDetailModal({
     setBusy(true);
     setError(null);
     try {
+      // Proof of the fix is recorded as a comment so it keeps its author and
+      // timestamp next to the original report.
+      if (json.status === "RESOLVED" && proof.length) {
+        await api(`/api/issues/${issue.id}/comments`, {
+          method: "POST",
+          json: { body: notes || "Fixed — photo attached.", photoUrls: proof },
+        });
+      }
       await api(`/api/issues/${issue.id}`, { method: "PATCH", json });
       onChanged();
     } catch (caught) {
@@ -234,21 +262,7 @@ function IssueDetailModal({
           </p>
         ) : null}
 
-        {issue.photoUrls.length ? (
-          <div className="flex flex-wrap gap-2">
-            {issue.photoUrls.map((url) => (
-              <a
-                key={url}
-                href={url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-brand-600 hover:underline"
-              >
-                📷 View photo
-              </a>
-            ))}
-          </div>
-        ) : null}
+        {issue.photoUrls.length ? <PhotoStrip urls={issue.photoUrls} size={72} /> : null}
 
         <p className="text-xs text-ink-500">
           Carried onto {issue._count.carries} visit{issue._count.carries === 1 ? "" : "s"}.
@@ -276,6 +290,12 @@ function IssueDetailModal({
               placeholder="What was done?"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+            />
+            <PhotoCapture
+              value={proof}
+              onChange={setProof}
+              max={3}
+              label="Photo of the fix"
             />
             <ErrorNote error={error} />
             <div className="flex flex-wrap gap-2">

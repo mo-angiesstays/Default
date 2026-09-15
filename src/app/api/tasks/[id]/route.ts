@@ -125,14 +125,21 @@ export const PATCH = handler(async (request: Request, context: Context) => {
     if (input.status === "COMPLETED") {
       const outstanding = await outstandingRequiredItems(id);
       if (outstanding.length) {
-        throw badRequest(
-          `${outstanding.length} required checklist item${
-            outstanding.length === 1 ? " is" : "s are"
-          } still open: ${outstanding
-            .slice(0, 3)
-            .map((i) => i.title)
-            .join(", ")}${outstanding.length > 3 ? "…" : ""}`,
-        );
+        const missingPhotos = outstanding.filter((i) => i.reason === "photo");
+        const unticked = outstanding.filter((i) => i.reason === "unticked");
+
+        const parts: string[] = [];
+        if (unticked.length) {
+          parts.push(
+            `${unticked.length} checklist item${unticked.length === 1 ? "" : "s"} still open (${summarise(unticked)})`,
+          );
+        }
+        if (missingPhotos.length) {
+          parts.push(
+            `${missingPhotos.length} item${missingPhotos.length === 1 ? "" : "s"} still need${missingPhotos.length === 1 ? "s" : ""} a photo (${summarise(missingPhotos)})`,
+          );
+        }
+        throw badRequest(parts.join(", and "));
       }
       data.completedAt = new Date();
     }
@@ -199,3 +206,8 @@ export const DELETE = handler(async (_request: Request, context: Context) => {
   });
   return ok({ task });
 });
+
+function summarise(items: { title: string }[]): string {
+  const shown = items.slice(0, 3).map((i) => i.title).join(", ");
+  return items.length > 3 ? `${shown}…` : shown;
+}
