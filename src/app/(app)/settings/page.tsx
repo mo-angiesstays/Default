@@ -148,10 +148,10 @@ export default function SettingsPage() {
                   <span
                     className={`chip ${
                       run.status === "SUCCESS"
-                        ? "bg-emerald-100 text-emerald-800 ring-emerald-200"
+                        ? "bg-moss-100 text-moss-800 ring-moss-200"
                         : run.status === "FAILED"
-                          ? "bg-red-100 text-red-800 ring-red-200"
-                          : "bg-amber-100 text-amber-800 ring-amber-200"
+                          ? "bg-rust-100 text-rust-800 ring-rust-200"
+                          : "bg-ochre-100 text-ochre-800 ring-ochre-200"
                     }`}
                   >
                     {run.status}
@@ -161,7 +161,7 @@ export default function SettingsPage() {
                     <LocalTime value={run.startedAt} format="relative" />
                   </span>
                 </div>
-                {run.error ? <p className="mt-1 text-xs text-red-700">{run.error}</p> : null}
+                {run.error ? <p className="mt-1 text-xs text-rust-700">{run.error}</p> : null}
                 {run.summary ? (
                   <p className="mt-1 text-xs text-ink-500">{summarise(run.summary)}</p>
                 ) : null}
@@ -204,8 +204,8 @@ function IntegrationCard({
         <span
           className={`chip ${
             configured
-              ? "bg-emerald-100 text-emerald-800 ring-emerald-200"
-              : "bg-amber-100 text-amber-800 ring-amber-200"
+              ? "bg-moss-100 text-moss-800 ring-moss-200"
+              : "bg-ochre-100 text-ochre-800 ring-ochre-200"
           }`}
         >
           {configured ? "Configured" : "Not configured"}

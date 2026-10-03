@@ -141,7 +141,7 @@ async function main() {
     name: "Alex Morgan",
     role: "MANAGER",
     password: "changeme123",
-    color: "#1553dc",
+    color: "#475a3b",
   });
 
   const maria = await upsertUser({
@@ -150,7 +150,7 @@ async function main() {
     role: "CLEANER",
     password: "changeme123",
     skills: ["deep-clean", "laundry"],
-    color: "#7c3aed",
+    color: "#ad7247",
     maxDailyTasks: 3,
   });
 
@@ -160,7 +160,7 @@ async function main() {
     role: "CLEANER",
     password: "changeme123",
     skills: ["laundry"],
-    color: "#059669",
+    color: "#4a7f5b",
   });
 
   const sam = await upsertUser({
@@ -169,7 +169,7 @@ async function main() {
     role: "MAINTENANCE",
     password: "changeme123",
     skills: ["plumbing", "electrical", "hvac"],
-    color: "#ea580c",
+    color: "#b2822f",
   });
 
   const turnoverList = await upsertChecklist("Standard turnover", "TURNOVER", TURNOVER_ITEMS);
@@ -182,7 +182,7 @@ async function main() {
       state: "NC",
       bedrooms: 2,
       bathrooms: 1.5,
-      color: "#0ea5e9",
+      color: "#8ba577",
       turnoverMinutes: 150,
       deepCleanDayOfMonth: 5,
       accessNotes: "Lockbox to the right of the front door. Code is in the manager's notes.",
@@ -193,7 +193,7 @@ async function main() {
       state: "NC",
       bedrooms: 1,
       bathrooms: 1,
-      color: "#8b5cf6",
+      color: "#c48d5f",
       turnoverMinutes: 120,
       deepCleanDayOfMonth: 12,
       accessNotes: "Building code at the main door, then keypad 2B.",
@@ -204,7 +204,7 @@ async function main() {
       state: "NC",
       bedrooms: 4,
       bathrooms: 3,
-      color: "#f59e0b",
+      color: "#659b75",
       turnoverMinutes: 300,
       deepCleanDayOfMonth: 20,
       accessNotes: "Gate opener is in the kitchen drawer. Steep driveway — park at the top.",

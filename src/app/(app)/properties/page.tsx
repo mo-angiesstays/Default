@@ -106,21 +106,21 @@ export default function PropertiesPage() {
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {property.hostawayListingId ? (
-                    <span className="chip bg-emerald-50 text-emerald-700 ring-emerald-200">
+                    <span className="chip bg-moss-50 text-moss-700 ring-moss-200">
                       Hostaway linked
                     </span>
                   ) : (
-                    <span className="chip bg-amber-50 text-amber-700 ring-amber-200">
+                    <span className="chip bg-ochre-50 text-ochre-700 ring-ochre-200">
                       Not linked
                     </span>
                   )}
                   {property.deepCleanEnabled ? (
-                    <span className="chip bg-purple-50 text-purple-700 ring-purple-200">
+                    <span className="chip bg-brand-50 text-brand-700 ring-brand-200">
                       Deep clean day {property.deepCleanDayOfMonth ?? 1}
                     </span>
                   ) : null}
                   {property._count.issues ? (
-                    <span className="chip bg-red-50 text-red-700 ring-red-200">
+                    <span className="chip bg-rust-50 text-rust-700 ring-rust-200">
                       {property._count.issues} open issue
                       {property._count.issues === 1 ? "" : "s"}
                     </span>

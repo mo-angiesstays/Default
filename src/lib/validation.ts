@@ -73,7 +73,7 @@ export const createUserSchema = z.object({
   skills: z.array(z.string()).default([]),
   maxDailyTasks: z.number().int().min(1).max(20).default(4),
   hourlyRate: z.number().nonnegative().nullish(),
-  avatarColor: z.string().default("#3388fb"),
+  avatarColor: z.string().default("#718c5c"),
   notes: z.string().nullish(),
 });
 
@@ -111,7 +111,7 @@ export const propertySchema = z.object({
   wifiName: z.string().nullish(),
   wifiPassword: z.string().nullish(),
   supplyNotes: z.string().nullish(),
-  color: z.string().default("#61708d"),
+  color: z.string().default("#7f7564"),
   active: z.boolean().default(true),
 });
 

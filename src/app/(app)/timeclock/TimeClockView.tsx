@@ -84,12 +84,12 @@ export function TimeClockView({ viewer }: { viewer: { id: string; role: Role } }
 
       <div
         className={`card card-pad space-y-3 ${
-          running ? "border-emerald-300 bg-emerald-50/50" : ""
+          running ? "border-moss-300 bg-moss-50/50" : ""
         }`}
       >
         {running ? (
           <>
-            <p className="text-sm text-emerald-900">
+            <p className="text-sm text-moss-900">
               On the clock since <LocalTime value={running.clockInAt} format="time" />
             </p>
             <Elapsed since={running.clockInAt} />
@@ -124,7 +124,7 @@ export function TimeClockView({ viewer }: { viewer: { id: string; role: Role } }
           disabled={busy}
           onClick={toggle}
         >
-          {busy ? "Saving…" : running ? "⏹ Clock out" : "⏱ Clock in"}
+          {busy ? "Saving…" : running ? "Clock out" : "Clock in"}
         </button>
       </div>
 
@@ -180,7 +180,7 @@ export function TimeClockView({ viewer }: { viewer: { id: string; role: Role } }
                   {entry.clockOutAt ? (
                     <LocalTime value={entry.clockOutAt} format="time" />
                   ) : (
-                    <span className="text-emerald-600">still running</span>
+                    <span className="text-moss-600">still running</span>
                   )}
                   {entry.edited ? " · edited" : ""}
                 </p>
@@ -210,7 +210,7 @@ function Elapsed({ since }: { since: string }) {
   const ss = String(seconds % 60).padStart(2, "0");
 
   return (
-    <p className="text-3xl font-semibold tabular-nums text-emerald-700">
+    <p className="text-3xl font-semibold tabular-nums text-moss-700">
       {hh}:{mm}:{ss}
     </p>
   );

@@ -17,9 +17,9 @@ type Proposal = {
 };
 
 const CONFIDENCE_CLASS = {
-  high: "bg-emerald-100 text-emerald-800 ring-emerald-200",
-  medium: "bg-amber-100 text-amber-800 ring-amber-200",
-  low: "bg-red-100 text-red-800 ring-red-200",
+  high: "bg-moss-100 text-moss-800 ring-moss-200",
+  medium: "bg-ochre-100 text-ochre-800 ring-ochre-200",
+  low: "bg-rust-100 text-rust-800 ring-rust-200",
 };
 
 /** Manager-only: ask the scheduler who should take this job, then apply it. */
@@ -75,7 +75,7 @@ export function AssignPanel({
 
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn-secondary" disabled={busy} onClick={() => suggest(false)}>
-          {busy ? "Thinking…" : "✨ Suggest a cleaner"}
+          {busy ? "Thinking…" : "Suggest a cleaner"}
         </button>
         <button type="button" className="btn-primary" disabled={busy} onClick={() => suggest(true)}>
           Auto-assign
@@ -98,12 +98,12 @@ export function AssignPanel({
           {proposal.chosenUserName ? (
             <p className="font-medium text-ink-900">→ {proposal.chosenUserName}</p>
           ) : (
-            <p className="font-medium text-red-700">No suitable person available</p>
+            <p className="font-medium text-rust-700">No suitable person available</p>
           )}
           <p className="text-sm text-ink-700">{proposal.reasoning}</p>
 
           {proposal.ruleConflicts.length ? (
-            <ul className="list-inside list-disc text-xs text-amber-800">
+            <ul className="list-inside list-disc text-xs text-ochre-800">
               {proposal.ruleConflicts.map((conflict) => (
                 <li key={conflict}>{conflict}</li>
               ))}

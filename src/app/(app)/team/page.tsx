@@ -96,7 +96,7 @@ export default function TeamPage() {
                         </div>
                       ) : null}
                       {!member.active ? (
-                        <span className="chip mt-1.5 bg-red-50 text-red-700 ring-red-200">
+                        <span className="chip mt-1.5 bg-rust-50 text-rust-700 ring-rust-200">
                           Inactive
                         </span>
                       ) : null}
@@ -149,7 +149,7 @@ function PersonModal({
     password: "",
     skills: member?.skills.join(", ") ?? "",
     maxDailyTasks: member?.maxDailyTasks ?? 4,
-    avatarColor: member?.avatarColor ?? "#3388fb",
+    avatarColor: member?.avatarColor ?? "#718c5c",
     active: member?.active ?? true,
   });
   const [busy, setBusy] = useState(false);
@@ -167,7 +167,7 @@ function PersonModal({
       password: "",
       skills: member?.skills.join(", ") ?? "",
       maxDailyTasks: member?.maxDailyTasks ?? 4,
-      avatarColor: member?.avatarColor ?? "#3388fb",
+      avatarColor: member?.avatarColor ?? "#718c5c",
       active: member?.active ?? true,
     });
   }

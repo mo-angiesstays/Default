@@ -8,6 +8,20 @@ import type { Role } from "@prisma/client";
 import { api, fetcher } from "@/lib/client";
 import { ROLE_LABEL } from "@/lib/labels";
 import { Avatar } from "@/components/ui";
+import {
+  IconCalendar,
+  IconChat,
+  IconChecklist,
+  IconClock,
+  IconDashboard,
+  IconIssue,
+  IconMenu,
+  IconProperty,
+  IconScheduling,
+  IconSettings,
+  IconTasks,
+  IconTeam,
+} from "@/components/icons";
 
 type Me = {
   user: { id: string; name: string; email: string; role: Role; timezone: string } | null;
@@ -16,7 +30,14 @@ type Me = {
   openShift: { id: string; clockInAt: string } | null;
 };
 
-type NavItem = { href: string; label: string; icon: string; roles?: Role[]; badge?: number };
+type IconComponent = (props: { className?: string; size?: number }) => React.ReactElement;
+type NavItem = {
+  href: string;
+  label: string;
+  Icon: IconComponent;
+  roles?: Role[];
+  badge?: number;
+};
 
 export function AppShell({
   user,
@@ -33,17 +54,17 @@ export function AppShell({
   const { data: me } = useSWR<Me>("/api/auth/me", fetcher, { refreshInterval: 20_000 });
 
   const nav: NavItem[] = ([
-    { href: "/", label: "Dashboard", icon: "◧" },
-    { href: "/tasks", label: "Tasks", icon: "☑" },
-    { href: "/calendar", label: "Calendar", icon: "▦" },
-    { href: "/issues", label: "Issues", icon: "⚠" },
-    { href: "/chat", label: "Chat", icon: "💬", badge: me?.unreadChat },
-    { href: "/timeclock", label: "Time clock", icon: "⏱" },
-    { href: "/properties", label: "Properties", icon: "⌂", roles: ["MANAGER"] },
-    { href: "/team", label: "Team", icon: "👥", roles: ["MANAGER"] },
-    { href: "/checklists", label: "Checklists", icon: "✓", roles: ["MANAGER"] },
-    { href: "/rules", label: "Scheduling", icon: "⚙", roles: ["MANAGER"] },
-    { href: "/settings", label: "Settings", icon: "⚡", roles: ["MANAGER"] },
+    { href: "/", label: "Dashboard", Icon: IconDashboard },
+    { href: "/tasks", label: "Tasks", Icon: IconTasks },
+    { href: "/calendar", label: "Calendar", Icon: IconCalendar },
+    { href: "/issues", label: "Issues", Icon: IconIssue },
+    { href: "/chat", label: "Chat", Icon: IconChat, badge: me?.unreadChat },
+    { href: "/timeclock", label: "Time clock", Icon: IconClock },
+    { href: "/properties", label: "Properties", Icon: IconProperty, roles: ["MANAGER"] },
+    { href: "/team", label: "Team", Icon: IconTeam, roles: ["MANAGER"] },
+    { href: "/checklists", label: "Checklists", Icon: IconChecklist, roles: ["MANAGER"] },
+    { href: "/rules", label: "Scheduling", Icon: IconScheduling, roles: ["MANAGER"] },
+    { href: "/settings", label: "Settings", Icon: IconSettings, roles: ["MANAGER"] },
   ] satisfies NavItem[]).filter((item) => !item.roles || (item.roles as Role[]).includes(user.role));
 
   const signOut = async () => {
@@ -62,18 +83,16 @@ export function AppShell({
           key={item.href}
           href={item.href}
           onClick={() => setMobileOpen(false)}
-          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
             isActive(item.href)
-              ? "bg-brand-600 font-medium text-white"
-              : "text-ink-300 hover:bg-ink-800 hover:text-white"
+              ? "bg-brand-600/90 font-medium text-white shadow-sm"
+              : "text-ink-300/80 hover:bg-white/5 hover:text-ink-100"
           }`}
         >
-          <span aria-hidden className="w-4 text-center opacity-80">
-            {item.icon}
-          </span>
+          <item.Icon className={isActive(item.href) ? "opacity-95" : "opacity-70"} />
           <span className="flex-1">{item.label}</span>
           {item.badge ? (
-            <span className="rounded-full bg-red-500 px-1.5 text-xs font-semibold text-white">
+            <span className="rounded-full bg-rust-500 px-1.5 text-xs font-semibold text-white">
               {item.badge > 99 ? "99+" : item.badge}
             </span>
           ) : null}
@@ -85,13 +104,13 @@ export function AppShell({
   return (
     <div className="flex min-h-screen bg-ink-50">
       {/* Desktop sidebar */}
-      <aside className="hidden w-60 shrink-0 flex-col justify-between bg-ink-900 p-3 lg:flex">
+      <aside className="hidden w-64 shrink-0 flex-col justify-between bg-ink-900 p-4 lg:flex">
         <div>
-          <Link href="/" className="mb-5 flex items-center gap-2 px-2 py-1">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 font-bold text-white">
+          <Link href="/" className="mb-6 flex items-center gap-2.5 px-1 py-1">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 font-display text-lg text-white">
               T
             </span>
-            <span className="font-semibold text-white">TurnKeep</span>
+            <span className="font-display text-lg text-ink-50">TurnKeep</span>
           </Link>
           {navLinks}
         </div>
@@ -107,13 +126,13 @@ export function AppShell({
             className="absolute inset-0 bg-ink-900/50"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="relative flex h-full w-64 flex-col justify-between bg-ink-900 p-3">
+          <aside className="relative flex h-full w-72 flex-col justify-between bg-ink-900 p-4">
             <div>
-              <div className="mb-5 flex items-center gap-2 px-2 py-1">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 font-bold text-white">
+              <div className="mb-6 flex items-center gap-2.5 px-1 py-1">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 font-display text-lg text-white">
                   T
                 </span>
-                <span className="font-semibold text-white">TurnKeep</span>
+                <span className="font-display text-lg text-ink-50">TurnKeep</span>
               </div>
               {navLinks}
             </div>
@@ -123,29 +142,29 @@ export function AppShell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center gap-3 border-b border-ink-200 bg-white px-4 py-2 lg:hidden">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-ink-200/70 bg-ink-50/90 px-4 py-2.5 backdrop-blur lg:hidden">
           <button
             type="button"
-            className="btn-ghost px-2 py-1 text-lg"
+            className="btn-ghost px-2 py-1.5"
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
           >
-            ☰
+            <IconMenu size={20} />
           </button>
-          <Link href="/" className="font-semibold text-ink-900">
+          <Link href="/" className="font-display text-lg text-ink-800">
             TurnKeep
           </Link>
           <div className="ml-auto flex items-center gap-2">
             {me?.openShift ? (
-              <Link href="/timeclock" className="chip bg-emerald-100 text-emerald-800 ring-emerald-200">
-                ⏱ On the clock
+              <Link href="/timeclock" className="chip bg-moss-100 text-moss-800 ring-moss-200">
+                <IconClock size={12} /> On the clock
               </Link>
             ) : null}
             <Avatar name={user.name} size={28} />
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
+        <main className="mx-auto min-w-0 w-full max-w-6xl flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );
@@ -161,26 +180,26 @@ function SidebarFooter({
   onSignOut: () => void;
 }) {
   return (
-    <div className="border-t border-ink-800 pt-3">
+    <div className="border-t border-white/10 pt-3">
       {openShift ? (
         <Link
           href="/timeclock"
-          className="mb-2 flex items-center gap-2 rounded-lg bg-emerald-600/20 px-3 py-2 text-xs font-medium text-emerald-300"
+          className="mb-2 flex items-center gap-2 rounded-xl bg-moss-500/20 px-3 py-2 text-xs font-medium text-moss-200"
         >
-          ⏱ On the clock
+          <IconClock size={14} /> On the clock
         </Link>
       ) : null}
       <div className="flex items-center gap-2 px-1 py-2">
         <Avatar name={user.name} size={32} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-white">{user.name}</p>
+          <p className="truncate text-sm font-medium text-ink-50">{user.name}</p>
           <p className="truncate text-xs text-ink-400">{ROLE_LABEL[user.role]}</p>
         </div>
       </div>
       <button
         type="button"
         onClick={onSignOut}
-        className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink-400 hover:bg-ink-800 hover:text-white"
+        className="w-full rounded-xl px-3 py-2 text-left text-sm text-ink-400 hover:bg-white/5 hover:text-ink-100"
       >
         Sign out
       </button>

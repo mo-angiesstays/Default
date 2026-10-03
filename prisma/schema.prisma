@@ -136,7 +136,7 @@ model User {
   baseLat       Float?
   baseLng       Float?
   notes         String?
-  avatarColor   String    @default("#3388fb")
+  avatarColor   String    @default("#718c5c")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
@@ -229,7 +229,7 @@ model Property {
   wifiName     String?
   wifiPassword String?
   supplyNotes  String?
-  color        String   @default("#61708d")
+  color        String   @default("#7f7564")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

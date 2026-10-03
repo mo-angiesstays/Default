@@ -63,7 +63,7 @@ export function IssuesView({ viewer }: { viewer: { id: string; role: Role } }) {
           </p>
         </div>
         <button type="button" className="btn-primary" onClick={() => setReportOpen(true)}>
-          ⚠ Report an issue
+          Report an issue
         </button>
       </div>
 
@@ -89,7 +89,7 @@ export function IssuesView({ viewer }: { viewer: { id: string; role: Role } }) {
       </div>
 
       {sticky.length ? (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-ochre-300 bg-ochre-50 px-4 py-3 text-sm text-ochre-900">
           <strong>{sticky.length}</strong> issue{sticky.length === 1 ? " has" : "s have"} been
           carried onto two or more visits without being fixed.
         </div>
@@ -133,7 +133,7 @@ export function IssuesView({ viewer }: { viewer: { id: string; role: Role } }) {
                     </Chip>
                   ) : null}
                   {issue.maintenanceTask ? (
-                    <Chip className="bg-orange-50 text-orange-700 ring-orange-200">
+                    <Chip className="bg-clay-50 text-clay-700 ring-clay-200">
                       Maintenance job open
                     </Chip>
                   ) : null}
@@ -271,14 +271,14 @@ function IssueDetailModal({
         {issue.maintenanceTask ? (
           <Link
             href={`/tasks/${issue.maintenanceTask.id}`}
-            className="block rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-900 hover:bg-orange-100"
+            className="block rounded-lg border border-clay-200 bg-clay-50 px-3 py-2 text-sm text-clay-900 hover:bg-clay-100"
           >
             Maintenance job — {issue.maintenanceTask.status.toLowerCase().replace("_", " ")} →
           </Link>
         ) : null}
 
         {issue.status === "RESOLVED" ? (
-          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+          <div className="rounded-lg border border-moss-200 bg-moss-50 p-3 text-sm text-moss-900">
             <p className="font-medium">Resolved by {issue.resolvedBy?.name ?? "someone"}</p>
             {issue.resolutionNotes ? <p>{issue.resolutionNotes}</p> : null}
           </div>

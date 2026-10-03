@@ -15,7 +15,7 @@ export function Chip({
 
 export function Avatar({
   name,
-  color = "#61708d",
+  color = "#7f7564",
   size = 32,
 }: {
   name: string;
@@ -70,7 +70,7 @@ export function ErrorNote({ error }: { error: unknown }) {
   if (!error) return null;
   const message = error instanceof Error ? error.message : String(error);
   return (
-    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+    <div className="rounded-lg border border-rust-200 bg-rust-50 px-3 py-2 text-sm text-rust-800">
       {message}
     </div>
   );
@@ -91,9 +91,9 @@ export function StatCard({
 }) {
   const toneClass = {
     default: "text-ink-900",
-    warn: "text-amber-600",
-    danger: "text-red-600",
-    good: "text-emerald-600",
+    warn: "text-ochre-600",
+    danger: "text-rust-600",
+    good: "text-moss-600",
   }[tone];
 
   const inner = (
@@ -264,7 +264,7 @@ export function ProgressBar({ done, total }: { done: number; total: number }) {
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-ink-100">
         <div
           className={`h-full rounded-full transition-all ${
-            pct === 100 ? "bg-emerald-500" : "bg-brand-500"
+            pct === 100 ? "bg-moss-500" : "bg-brand-500"
           }`}
           style={{ width: `${pct}%` }}
         />

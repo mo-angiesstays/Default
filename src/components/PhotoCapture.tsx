@@ -2,6 +2,7 @@
 
 import { useCallback, useId, useRef, useState } from "react";
 import { api } from "@/lib/client";
+import { IconCamera } from "@/components/icons";
 
 /**
  * Take-a-photo control for cleaners and handymen.
@@ -198,7 +199,7 @@ export function PhotoCapture({
                     <button
                       type="button"
                       onClick={() => discard(item)}
-                      className="text-[11px] text-red-700 underline"
+                      className="text-[11px] text-rust-700 underline"
                     >
                       Discard
                     </button>
@@ -211,7 +212,7 @@ export function PhotoCapture({
       ) : null}
 
       {pending.some((item) => item.status === "failed") ? (
-        <p className="text-xs text-red-700">
+        <p className="text-xs text-rust-700">
           {pending.find((item) => item.status === "failed")?.error} — the photo is still here, so
           retry once you have signal.
         </p>
@@ -224,7 +225,7 @@ export function PhotoCapture({
             className="btn-secondary"
             onClick={() => cameraRef.current?.click()}
           >
-            📷 {label}
+            <IconCamera size={15} /> {label}
           </button>
           <button
             type="button"

@@ -19,6 +19,7 @@ import {
 } from "@/lib/labels";
 import { Avatar, Chip, ErrorNote, LocalTime, ProgressBar, Spinner } from "@/components/ui";
 import { ReportIssueButton } from "@/components/ReportIssueDialog";
+import { IconCamera } from "@/components/icons";
 import { PhotoCapture, PhotoStrip } from "@/components/PhotoCapture";
 import { AssignPanel } from "@/components/AssignPanel";
 
@@ -177,10 +178,10 @@ export function TaskDetailView({
             <Chip className={PRIORITY_CLASS[task.priority]}>{PRIORITY_LABEL[task.priority]}</Chip>
           ) : null}
           {task.reservation?.sameDayTurn ? (
-            <Chip className="bg-red-50 text-red-700 ring-red-200">Same-day turn</Chip>
+            <Chip className="bg-rust-50 text-rust-700 ring-rust-200">Same-day turn</Chip>
           ) : null}
           {task.googleEventId ? (
-            <Chip className="bg-emerald-50 text-emerald-700 ring-emerald-200">📅 On calendar</Chip>
+            <Chip className="bg-moss-50 text-moss-700 ring-moss-200">On calendar</Chip>
           ) : null}
         </div>
 
@@ -214,7 +215,7 @@ export function TaskDetailView({
                 {task.assignee.name}
               </span>
             ) : (
-              <span className="text-amber-600">Nobody yet</span>
+              <span className="text-ochre-600">Nobody yet</span>
             )}
           </div>
         </div>
@@ -235,7 +236,7 @@ export function TaskDetailView({
         ) : null}
 
         {task.googleSyncError ? (
-          <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
+          <p className="rounded-lg bg-ochre-50 p-2 text-xs text-ochre-800">
             Calendar sync problem: {task.googleSyncError}
           </p>
         ) : null}
@@ -321,13 +322,13 @@ export function TaskDetailView({
       </div>
 
       {openIssues.length ? (
-        <section className="card card-pad space-y-2 border-amber-300 bg-amber-50/50">
+        <section className="card card-pad space-y-2 border-ochre-300 bg-ochre-50/50">
           <div className="flex items-center justify-between">
-            <h2 className="section-title text-amber-800">
+            <h2 className="section-title text-ochre-800">
               Open issues at this property ({openIssues.length})
             </h2>
           </div>
-          <p className="text-xs text-amber-800">
+          <p className="text-xs text-ochre-800">
             These stay on every visit until somebody marks the work done.
           </p>
           <div className="space-y-2">
@@ -411,7 +412,7 @@ export function TaskDetailView({
                   {entry.clockOutAt ? (
                     <LocalTime value={entry.clockOutAt} format="time" />
                   ) : (
-                    <span className="text-emerald-600">running</span>
+                    <span className="text-moss-600">running</span>
                   )}
                   {entry.minutes != null ? ` · ${entry.minutes}m` : ""}
                 </span>
@@ -474,8 +475,8 @@ function ChecklistRow({
           {item.title}
           {item.required ? null : <span className="ml-1 text-xs text-ink-400">(optional)</span>}
           {needsPhoto ? (
-            <span className="ml-1.5 chip bg-amber-100 text-amber-800 ring-amber-200">
-              📷 photo needed
+            <span className="ml-1.5 chip bg-ochre-100 text-ochre-800 ring-ochre-200">
+              <IconCamera size={11} /> photo needed
             </span>
           ) : null}
         </p>
@@ -544,7 +545,7 @@ function IssueRow({
   };
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-white p-3">
+    <div className="rounded-lg border border-ochre-200 bg-white p-3">
       <div className="flex flex-wrap items-center gap-1.5">
         <Chip className={SEVERITY_CLASS[issue.severity]}>{SEVERITY_LABEL[issue.severity]}</Chip>
         <Chip className={ISSUE_STATUS_CLASS[issue.status]}>{ISSUE_STATUS_LABEL[issue.status]}</Chip>
@@ -724,7 +725,7 @@ function ClockButton({ taskId }: { taskId: string }) {
 
   return (
     <button type="button" className="btn-secondary" disabled={busy} onClick={toggle}>
-      {running ? "⏹ Clock out" : "⏱ Clock in"}
+      {running ? "Clock out" : "Clock in"}
     </button>
   );
 }

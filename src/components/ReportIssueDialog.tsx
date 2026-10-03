@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/client";
 import { ErrorNote, Field, Modal, Toggle } from "@/components/ui";
+import { IconIssue } from "@/components/icons";
 import { PhotoCapture } from "@/components/PhotoCapture";
 
 const CATEGORIES = [
@@ -29,7 +30,7 @@ export function ReportIssueButton({
   return (
     <>
       <button type="button" className="btn-secondary" onClick={() => setOpen(true)}>
-        ⚠ Report an issue
+        <IconIssue size={15} /> Report an issue
       </button>
       <ReportIssueDialog
         open={open}

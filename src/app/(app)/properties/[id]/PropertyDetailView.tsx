@@ -182,7 +182,7 @@ export function PropertyDetailView({ propertyId }: { propertyId: string }) {
                     <p className="truncate text-ink-900">
                       {reservation.guestName ?? "Guest"}
                       {reservation.sameDayTurn ? (
-                        <span className="ml-1 text-xs text-red-600">same-day turn</span>
+                        <span className="ml-1 text-xs text-rust-600">same-day turn</span>
                       ) : null}
                     </p>
                     <p className="text-xs text-ink-500">

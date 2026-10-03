@@ -6,6 +6,7 @@ import type { Role } from "@prisma/client";
 import { fetcher } from "@/lib/client";
 import { SEVERITY_CLASS, SEVERITY_LABEL } from "@/lib/labels";
 import { Chip, EmptyState, ErrorNote, LocalTime, Spinner, StatCard } from "@/components/ui";
+import { IconClock } from "@/components/icons";
 import { TaskCard, type TaskSummary } from "@/components/TaskCard";
 
 type DashboardData = {
@@ -61,9 +62,9 @@ export function DashboardView({ role, name }: { role: Role; name: string }) {
       {data.openShift ? (
         <Link
           href="/timeclock"
-          className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900"
+          className="flex items-center gap-2 rounded-xl border border-moss-200 bg-moss-50 px-4 py-3 text-sm text-moss-900"
         >
-          <span aria-hidden>⏱</span>
+          <IconClock size={16} />
           <span>
             You&apos;re on the clock since <LocalTime value={data.openShift.clockInAt} format="time" />.
           </span>
@@ -98,7 +99,7 @@ export function DashboardView({ role, name }: { role: Role; name: string }) {
 
       {data.overdue.length ? (
         <section className="space-y-2">
-          <h2 className="section-title text-red-600">Needs attention now</h2>
+          <h2 className="section-title text-rust-600">Needs attention now</h2>
           <div className="grid gap-2 lg:grid-cols-2">
             {data.overdue.map((task) => (
               <TaskCard key={task.id} task={task} showAssignee={isManager} />
@@ -146,7 +147,7 @@ export function DashboardView({ role, name }: { role: Role; name: string }) {
                   <span
                     aria-hidden
                     className="h-8 w-1 rounded-full"
-                    style={{ backgroundColor: task.property?.color ?? "#61708d" }}
+                    style={{ backgroundColor: task.property?.color ?? "#7f7564" }}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink-900">{task.title}</p>
@@ -157,7 +158,7 @@ export function DashboardView({ role, name }: { role: Role; name: string }) {
                   {task.assignee ? (
                     <span className="shrink-0 text-xs text-ink-500">{task.assignee.name}</span>
                   ) : (
-                    <span className="chip shrink-0 bg-amber-100 text-amber-800 ring-amber-200">
+                    <span className="chip shrink-0 bg-ochre-100 text-ochre-800 ring-ochre-200">
                       Unassigned
                     </span>
                   )}

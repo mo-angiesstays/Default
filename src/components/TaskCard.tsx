@@ -10,6 +10,7 @@ import {
   TASK_TYPE_LABEL,
 } from "@/lib/labels";
 import { Avatar, Chip, LocalTime, ProgressBar } from "@/components/ui";
+import { IconClock, IconIssue } from "@/components/icons";
 
 export type TaskSummary = {
   id: string;
@@ -42,7 +43,7 @@ export function TaskCard({ task, showAssignee = true }: { task: TaskSummary; sho
         <span
           aria-hidden
           className="mt-1 h-10 w-1 shrink-0 rounded-full"
-          style={{ backgroundColor: task.property?.color ?? "#61708d" }}
+          style={{ backgroundColor: task.property?.color ?? "#7f7564" }}
         />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -52,8 +53,9 @@ export function TaskCard({ task, showAssignee = true }: { task: TaskSummary; sho
               <Chip className={PRIORITY_CLASS[task.priority]}>{PRIORITY_LABEL[task.priority]}</Chip>
             ) : null}
             {task.openIssueCount ? (
-              <Chip className="bg-red-50 text-red-700 ring-red-200">
-                ⚠ {task.openIssueCount} open issue{task.openIssueCount === 1 ? "" : "s"}
+              <Chip className="bg-rust-50 text-rust-700 ring-rust-200">
+                <IconIssue size={11} />
+                {task.openIssueCount} open issue{task.openIssueCount === 1 ? "" : "s"}
               </Chip>
             ) : null}
           </div>
@@ -65,12 +67,13 @@ export function TaskCard({ task, showAssignee = true }: { task: TaskSummary; sho
           </p>
 
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-500">
-            <span>
-              🕒 <LocalTime value={task.scheduledStart} />
+            <span className="inline-flex items-center gap-1">
+              <IconClock size={12} />
+              <LocalTime value={task.scheduledStart} />
             </span>
             {task.dueAt ? (
-              <span className={overdue ? "font-medium text-red-600" : ""}>
-                {overdue ? "⚠ was due " : "due by "}
+              <span className={overdue ? "font-medium text-rust-600" : ""}>
+                {overdue ? "was due " : "due by "}
                 <LocalTime value={task.dueAt} format="time" />
               </span>
             ) : null}
@@ -84,13 +87,9 @@ export function TaskCard({ task, showAssignee = true }: { task: TaskSummary; sho
           ) : null}
         </div>
 
-        {showAssignee ? (
+        {showAssignee && task.assignee ? (
           <div className="shrink-0">
-            {task.assignee ? (
-              <Avatar name={task.assignee.name} color={task.assignee.avatarColor} size={30} />
-            ) : (
-              <span className="chip bg-amber-100 text-amber-800 ring-amber-200">Unassigned</span>
-            )}
+            <Avatar name={task.assignee.name} color={task.assignee.avatarColor} size={30} />
           </div>
         ) : null}
       </div>

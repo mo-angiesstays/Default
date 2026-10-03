@@ -160,14 +160,14 @@ export default function RulesPage() {
                       {KIND_LABEL[rule.kind]}
                     </span>
                     {rule.hard ? (
-                      <span className="chip bg-red-50 text-red-700 ring-red-200">Hard rule</span>
+                      <span className="chip bg-rust-50 text-rust-700 ring-rust-200">Hard rule</span>
                     ) : (
                       <span className="chip bg-brand-50 text-brand-700 ring-brand-200">
                         Weight {rule.weight}
                       </span>
                     )}
                     {rule.property ? (
-                      <span className="chip bg-purple-50 text-purple-700 ring-purple-200">
+                      <span className="chip bg-brand-50 text-brand-700 ring-brand-200">
                         {rule.property.name}
                       </span>
                     ) : null}

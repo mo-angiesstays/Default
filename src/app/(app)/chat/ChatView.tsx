@@ -76,7 +76,7 @@ function ChatInner({ viewer }: { viewer: { id: string; name: string } }) {
                   channel.id === activeId ? "bg-brand-50" : ""
                 }`}
               >
-                <Avatar name={channel.name} color={channel.color ?? "#61708d"} size={34} />
+                <Avatar name={channel.name} color={channel.color ?? "#7f7564"} size={34} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-ink-900">{channel.name}</p>
                   <p className="truncate text-xs text-ink-500">
@@ -188,7 +188,7 @@ function ChannelPane({
         <button type="button" className="btn-ghost px-2 py-1 lg:hidden" onClick={onBack}>
           ←
         </button>
-        <Avatar name={channel.name} color={channel.color ?? "#61708d"} size={32} />
+        <Avatar name={channel.name} color={channel.color ?? "#7f7564"} size={32} />
         <div className="min-w-0">
           <p className="truncate font-medium text-ink-900">{channel.name}</p>
           <p className="truncate text-xs text-ink-500">
