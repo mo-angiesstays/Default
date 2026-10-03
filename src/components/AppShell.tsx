@@ -8,6 +8,7 @@ import type { Role } from "@prisma/client";
 import { api, fetcher } from "@/lib/client";
 import { ROLE_LABEL } from "@/lib/labels";
 import { Avatar } from "@/components/ui";
+import { PendingUploads } from "@/components/PendingUploads";
 import {
   IconCalendar,
   IconCamera,
@@ -166,7 +167,10 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="mx-auto min-w-0 w-full max-w-6xl flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="mx-auto min-w-0 w-full max-w-6xl flex-1 p-4 sm:p-6 lg:p-8">
+          <PendingUploads />
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useCallback, useId, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import { IconCamera } from "@/components/icons";
+import { enqueue, offlineSupported } from "@/lib/offline-queue";
 
 /**
  * Take-a-photo control for cleaners and handymen.
@@ -34,6 +35,7 @@ export function PhotoCapture({
   max = 6,
   disabled = false,
   hint,
+  queueTarget,
 }: {
   /** Photo URLs already attached. */
   value: string[];
@@ -42,12 +44,19 @@ export function PhotoCapture({
   max?: number;
   disabled?: boolean;
   hint?: string;
+  /**
+   * Where a photo should land once it eventually uploads. Supplying this lets
+   * a failed upload survive the tab closing — without it, retry is in-memory
+   * only.
+   */
+  queueTarget?: { kind: "checklist-item"; taskId: string; itemId: string };
 }) {
   const cameraInputId = useId();
   const libraryInputId = useId();
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<PendingUpload[]>([]);
+  const [queuedCount, setQueuedCount] = useState(0);
   const [viewing, setViewing] = useState<string | null>(null);
 
   const remaining = max - value.length - pending.length;
@@ -74,20 +83,38 @@ export function PhotoCapture({
         // Read the latest value at call time — several uploads can land together.
         onChange([...valueRef.current, result.url]);
       } catch (error) {
+        const message = error instanceof Error ? error.message : "Upload failed";
+
+        // Park it on the device so closing the tab doesn't lose the photo.
+        // Only possible when we know where it should end up.
+        let parked = false;
+        if (queueTarget && offlineSupported()) {
+          try {
+            const prepared = await downscale(file);
+            await enqueue({
+              blob: prepared.file,
+              filename: prepared.file.name,
+              width: prepared.width,
+              height: prepared.height,
+              target: queueTarget,
+            });
+            parked = true;
+          } catch {
+            // Falls through to the in-memory retry below.
+          }
+        }
+
         setPending((current) =>
-          current.map((item) =>
-            item.key === key
-              ? {
-                  ...item,
-                  status: "failed",
-                  error: error instanceof Error ? error.message : "Upload failed",
-                }
-              : item,
-          ),
+          parked
+            ? current.filter((item) => item.key !== key)
+            : current.map((item) =>
+                item.key === key ? { ...item, status: "failed", error: message } : item,
+              ),
         );
+        if (parked) setQueuedCount((n) => n + 1);
       }
     },
-    [onChange],
+    [onChange, queueTarget],
   );
 
   // Keeps concurrent uploads from clobbering each other's additions.
@@ -209,6 +236,13 @@ export function PhotoCapture({
             </div>
           ))}
         </div>
+      ) : null}
+
+      {queuedCount ? (
+        <p className="text-xs text-ochre-800">
+          No connection — {queuedCount} photo{queuedCount === 1 ? "" : "s"} saved on this device.
+          {" "}They&apos;ll upload automatically, and it&apos;s safe to close the app.
+        </p>
       ) : null}
 
       {pending.some((item) => item.status === "failed") ? (

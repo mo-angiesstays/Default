@@ -65,6 +65,19 @@ the task. Reschedules update the event in place; cancellations delete it.
 verification. Direct messages, group channels and per-property channels, with
 unread counts.
 
+**Ask it questions from anywhere.** An MCP server at `/api/mcp` exposes the whole
+system as tools, so Claude, ChatGPT or your own bot can answer "what's unassigned
+on Saturday?" from a phone. Access tokens belong to a *person*, not the
+installation: a cleaner's assistant sees that cleaner's work and nothing else, and
+the scoping is applied in the query rather than asked of the model. For a bot that
+doesn't speak MCP, `/api/bot` runs the identical tools over plain REST.
+
+**AI photo and video analysis.** Issue photos get triaged — severity, likely cause,
+which trade to send, and what a photo can't settle. Video walkthroughs are sampled
+to frames with ffmpeg and read back as timestamped findings you tick to turn into
+issues. All of it is advice for a person; nothing auto-closes a job or fails
+anybody's work.
+
 **Time clock.** Opt-in. Clocking in starts the job; clocking out records the
 minutes. Managers see the whole team's timesheet and can correct a mis-punch —
 corrections are flagged.
@@ -87,7 +100,8 @@ else's is refused by the API, not just hidden in the UI.
 
 ## Running it
 
-Requires Node 20+ and PostgreSQL 14+.
+Requires Node 20+ and PostgreSQL 14+. `ffmpeg` is optional — without it
+photos still work and only video walkthroughs are unavailable.
 
 ```bash
 npm install
@@ -117,10 +131,27 @@ and the app degrades cleanly without it — Settings shows what is and isn't wir
 | `GOOGLE_IMPERSONATE_USER` | **Required for invites.** A Workspace user the service account may impersonate via domain-wide delegation. Without it events are created but attendees are never invited — Settings warns about this. |
 | `ANTHROPIC_API_KEY` | Turns on AI-assisted assignment. Without it, rule scoring alone. |
 | `CRON_SECRET` | Lets an external scheduler run the nightly pipeline without a login. |
+| `ANTHROPIC_VISION_MODEL` | Model for photo/video analysis. Defaults to the same as `ANTHROPIC_MODEL`; set it lower (e.g. `claude-haiku-4-5`) for high-volume turnover checks. |
 | `STORAGE_DRIVER` | `local` (default) or `s3`. |
 | `STORAGE_LOCAL_DIR` | Where the local driver writes. Point at a mounted volume on container hosts — most wipe the filesystem on redeploy. |
 | `S3_BUCKET` / `S3_REGION` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | For the `s3` driver. Works with AWS S3, Cloudflare R2, MinIO and Backblaze B2. |
 | `S3_ENDPOINT` / `S3_FORCE_PATH_STYLE` | Needed for R2, MinIO and other non-AWS gateways. |
+
+### Connecting an assistant
+
+Settings → **Assistant access** mints a token. Add `https://your-app/api/mcp` as a
+custom MCP connector with the token as a bearer credential.
+
+- **Claude** — custom connector, no plan restriction on tool use.
+- **ChatGPT** — custom connector, but arbitrary tool use needs Developer Mode,
+  which is limited to Business/Enterprise/Edu plans. Pro is read/fetch only.
+- **Your own bot** — either MCP, or `GET/POST /api/bot` for plain REST.
+
+The endpoint must be public HTTPS; assistants can't reach localhost.
+
+Give each person their own token. It's what decides whose work the assistant can
+see, and a read-only token can answer questions without being able to change
+anything.
 
 ### Keeping it running
 
@@ -162,6 +193,8 @@ src/lib/
   scheduler/index.ts          propose / apply / bulk-assign
   tasks.ts                    task creation, checklist snapshot, issue carry-over
   storage/                    photo storage: local disk or any S3-compatible bucket
+  mcp/                        MCP tool surface + personal access tokens
+  vision/                     photo triage, turnover checks, video frame sampling
 src/app/api/                  REST endpoints
 src/app/(app)/                screens
 ```
@@ -193,9 +226,10 @@ couldn't execute as script.
 
 ## Not included
 
-- **Offline capture queue.** A failed upload can be retried from the screen, but
-  closing the tab loses it. A cleaner in a basement with no signal has to come back
-  up. Making this fully offline means a service worker plus IndexedDB.
+- **Background sync.** Photos survive going offline (they're parked in IndexedDB
+  and drain when the connection returns), but only while the browser is running.
+  A true background upload after the app is closed needs a service worker with
+  the Background Sync API.
 - **Server-side image processing.** No thumbnail generation or EXIF stripping —
   the browser re-encodes to JPEG via canvas, which drops EXIF as a side effect, but
   an original passed through unconverted (an exotic format the browser can't decode)

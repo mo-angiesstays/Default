@@ -490,6 +490,7 @@ function ChecklistRow({
               max={1}
               disabled={saving}
               label="Photo"
+              queueTarget={{ kind: "checklist-item", taskId, itemId: item.id }}
             />
           </div>
         ) : item.photoUrl ? (
