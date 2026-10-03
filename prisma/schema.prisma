@@ -157,6 +157,7 @@ model User {
   createdChannels     ChatChannel[]        @relation("ChannelCreator")
   taskComments        TaskComment[]
   mediaAssets         MediaAsset[]
+  mcpTokens           McpToken[]
 
   @@index([role, active])
 }
@@ -656,6 +657,28 @@ model MediaAsset {
   createdAt    DateTime @default(now())
 
   @@index([uploadedById, createdAt])
+}
+
+/// A personal access token for the MCP server.
+///
+/// Scoped to one person so an assistant connected by a cleaner sees only that
+/// cleaner's work. Only the SHA-256 hash is stored.
+model McpToken {
+  id         String    @id @default(cuid())
+  /// Human label, e.g. "Maria's phone — Claude".
+  name       String
+  tokenHash  String    @unique
+  /// First characters of the plaintext, to tell tokens apart in the UI.
+  hint       String
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readOnly   Boolean   @default(false)
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, revokedAt])
 }
 
 model JobRun {

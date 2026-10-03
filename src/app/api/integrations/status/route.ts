@@ -37,6 +37,7 @@ export const GET = handler(async () => {
     },
     ai: { configured: env.anthropic.enabled, model: env.anthropic.model },
     cron: { configured: Boolean(env.cronSecret) },
+    appUrl: env.appUrl,
     recentRuns,
   });
 });

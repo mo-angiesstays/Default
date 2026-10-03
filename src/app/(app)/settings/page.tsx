@@ -4,6 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { api, fetcher } from "@/lib/client";
 import { ErrorNote, LocalTime, Spinner } from "@/components/ui";
+import { McpTokens } from "@/components/McpTokens";
 
 type Status = {
   hostaway: {
@@ -21,6 +22,7 @@ type Status = {
   };
   ai: { configured: boolean; model: string };
   cron: { configured: boolean };
+  appUrl: string;
   recentRuns: {
     id: string;
     job: string;
@@ -125,6 +127,8 @@ export default function SettingsPage() {
         messages={messages}
         onCall={call}
       />
+
+      <McpTokens appUrl={data.appUrl} />
 
       <IntegrationCard
         title="Nightly pipeline"
