@@ -158,6 +158,7 @@ model User {
   taskComments        TaskComment[]
   mediaAssets         MediaAsset[]
   mcpTokens           McpToken[]
+  visionAnalyses      VisionAnalysis[]
 
   @@index([role, active])
 }
@@ -242,6 +243,7 @@ model Property {
   schedulingRules    SchedulingRule[]
   timeEntries        TimeEntry[]
   chatChannels       ChatChannel[]
+  visionAnalyses     VisionAnalysis[]
 
   @@index([active])
 }
@@ -389,6 +391,7 @@ model Task {
   timeEntries     TimeEntry[]
   comments        TaskComment[]
   chatChannel     ChatChannel?
+  analyses        VisionAnalysis[]
 
   @@index([propertyId, scheduledStart])
   @@index([assigneeId, status])
@@ -462,8 +465,9 @@ model Issue {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  carries  TaskIssueCarry[]
-  comments IssueComment[]
+  carries        TaskIssueCarry[]
+  comments       IssueComment[]
+  visionAnalyses VisionAnalysis[]
 
   @@index([propertyId, status])
   @@index([status, severity])
@@ -679,6 +683,42 @@ model McpToken {
   createdAt  DateTime  @default(now())
 
   @@index([userId, revokedAt])
+}
+
+enum AnalysisKind {
+  ISSUE_TRIAGE
+  TURNOVER_CHECK
+  WALKTHROUGH
+}
+
+/// A stored AI reading of one or more photos, or a video walkthrough.
+///
+/// Kept as a record rather than written straight onto the issue: the analysis
+/// is advice for a person, so it sits alongside the human's own severity and
+/// never silently overwrites it.
+model VisionAnalysis {
+  id            String       @id @default(cuid())
+  kind          AnalysisKind
+  propertyId    String?
+  property      Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  issueId       String?
+  issue         Issue?       @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  taskId        String?
+  task          Task?        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  /// MediaAsset ids that were looked at.
+  mediaIds      String[]     @default([])
+  /// The parsed structured result.
+  result        Json
+  model         String
+  /// Frames sampled, for a video.
+  frameCount    Int?
+  requestedById String?
+  requestedBy   User?        @relation(fields: [requestedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+
+  @@index([issueId])
+  @@index([taskId])
+  @@index([propertyId, createdAt])
 }
 
 model JobRun {

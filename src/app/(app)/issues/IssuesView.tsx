@@ -14,6 +14,7 @@ import {
 import { Avatar, Chip, EmptyState, ErrorNote, LocalTime, Modal, Spinner } from "@/components/ui";
 import { ReportIssueDialog } from "@/components/ReportIssueDialog";
 import { PhotoCapture, PhotoStrip } from "@/components/PhotoCapture";
+import { IssueTriage } from "@/components/IssueTriage";
 
 type Issue = {
   id: string;
@@ -263,6 +264,15 @@ function IssueDetailModal({
         ) : null}
 
         {issue.photoUrls.length ? <PhotoStrip urls={issue.photoUrls} size={72} /> : null}
+
+        {issue.status !== "RESOLVED" ? (
+          <IssueTriage
+            issueId={issue.id}
+            hasPhotos={issue.photoUrls.length > 0}
+            currentSeverity={issue.severity}
+            onApplySeverity={(severity) => update({ severity })}
+          />
+        ) : null}
 
         <p className="text-xs text-ink-500">
           Carried onto {issue._count.carries} visit{issue._count.carries === 1 ? "" : "s"}.

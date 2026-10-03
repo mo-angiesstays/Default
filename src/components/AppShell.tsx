@@ -10,6 +10,7 @@ import { ROLE_LABEL } from "@/lib/labels";
 import { Avatar } from "@/components/ui";
 import {
   IconCalendar,
+  IconCamera,
   IconChat,
   IconChecklist,
   IconClock,
@@ -60,6 +61,7 @@ export function AppShell({
     { href: "/issues", label: "Issues", Icon: IconIssue },
     { href: "/chat", label: "Chat", Icon: IconChat, badge: me?.unreadChat },
     { href: "/timeclock", label: "Time clock", Icon: IconClock },
+    { href: "/walkthrough", label: "Walkthrough", Icon: IconCamera, roles: ["MANAGER"] },
     { href: "/properties", label: "Properties", Icon: IconProperty, roles: ["MANAGER"] },
     { href: "/team", label: "Team", Icon: IconTeam, roles: ["MANAGER"] },
     { href: "/checklists", label: "Checklists", Icon: IconChecklist, roles: ["MANAGER"] },

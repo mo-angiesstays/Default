@@ -46,7 +46,10 @@ export const env = {
 
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? "",
-    model: process.env.ANTHROPIC_MODEL ?? "claude-opus-5",
+    model: process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5",
+    /// Vision runs on its own setting: triage is a judgement call worth the
+    /// better model, bulk turnover checks are not.
+    visionModel: process.env.ANTHROPIC_VISION_MODEL ?? "claude-opus-5-5",
     get enabled() {
       return Boolean(process.env.ANTHROPIC_API_KEY);
     },
