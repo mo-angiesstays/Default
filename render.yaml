@@ -1,0 +1,65 @@
+# One-click deploy on Render. Railway and Fly work the same way from the
+# Dockerfile; this file just saves filling the form in by hand.
+services:
+  - type: web
+    name: turnkeep
+    runtime: docker
+    plan: starter
+    healthCheckPath: /login
+    disk:
+      # Photos written by the local storage driver. Skip this and set
+      # STORAGE_DRIVER=s3 if you'd rather keep them in a bucket.
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 10
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: turnkeep-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: APP_URL
+        sync: false
+      - key: DEFAULT_TIMEZONE
+        value: America/New_York
+      - key: STORAGE_DRIVER
+        value: local
+      - key: STORAGE_LOCAL_DIR
+        value: /app/uploads
+      # Fill these in once you have them — the app runs without them and
+      # Settings shows what's still missing.
+      - key: HOSTAWAY_ACCOUNT_ID
+        sync: false
+      - key: HOSTAWAY_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOOGLE_CLIENT_EMAIL
+        sync: false
+      - key: GOOGLE_PRIVATE_KEY
+        sync: false
+      - key: GOOGLE_IMPERSONATE_USER
+        sync: false
+
+  - type: cron
+    name: turnkeep-pipeline
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    # Hourly keeps turnovers current as bookings change.
+    schedule: "0 * * * *"
+    dockerCommand: sh -c 'curl -fsS -X POST "$APP_URL/api/cron" -H "Authorization: Bearer $CRON_SECRET"'
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        fromService:
+          name: turnkeep
+          type: web
+          envVarKey: CRON_SECRET
+
+databases:
+  - name: turnkeep-db
+    plan: basic-256mb

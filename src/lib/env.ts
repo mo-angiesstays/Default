@@ -1,7 +1,19 @@
 /**
  * Environment access. Everything optional except DATABASE_URL and AUTH_SECRET —
  * the app runs with integrations switched off if their keys are missing.
+ *
+ * Every value is a getter reading `process.env` at call time, never a value
+ * captured when this module first loaded. That matters because .env files get
+ * loaded by different things at different moments (Next at boot, Prisma on
+ * import, a worker script of its own accord). With eager values, a module
+ * imported before the .env was read would hold an empty credential while its
+ * `enabled` getter said the integration was configured — so the app would
+ * confidently call an API with no key and report a baffling auth error.
  */
+
+function read(name: string, fallback = ""): string {
+  return process.env[name] ?? fallback;
+}
 
 function required(name: string): string {
   const value = process.env[name];
@@ -20,57 +32,103 @@ export const env = {
   get authSecret() {
     return required("AUTH_SECRET");
   },
-  appUrl: process.env.APP_URL ?? "http://localhost:3000",
-  defaultTimezone: process.env.DEFAULT_TIMEZONE ?? "America/New_York",
+  get appUrl() {
+    return read("APP_URL", "http://localhost:3000");
+  },
+  get defaultTimezone() {
+    return read("DEFAULT_TIMEZONE", "America/New_York");
+  },
 
   hostaway: {
-    accountId: process.env.HOSTAWAY_ACCOUNT_ID ?? "",
-    apiKey: process.env.HOSTAWAY_API_KEY ?? "",
-    baseUrl: process.env.HOSTAWAY_BASE_URL ?? "https://api.hostaway.com/v1",
+    get accountId() {
+      return read("HOSTAWAY_ACCOUNT_ID");
+    },
+    get apiKey() {
+      return read("HOSTAWAY_API_KEY");
+    },
+    get baseUrl() {
+      return read("HOSTAWAY_BASE_URL", "https://api.hostaway.com/v1");
+    },
     get enabled() {
-      return Boolean(process.env.HOSTAWAY_ACCOUNT_ID && process.env.HOSTAWAY_API_KEY);
+      return Boolean(this.accountId && this.apiKey);
     },
   },
 
   google: {
-    clientEmail: process.env.GOOGLE_CLIENT_EMAIL ?? "",
-    privateKey: (process.env.GOOGLE_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
-    calendarId: process.env.GOOGLE_CALENDAR_ID ?? "primary",
+    get clientEmail() {
+      return read("GOOGLE_CLIENT_EMAIL");
+    },
+    get privateKey() {
+      return read("GOOGLE_PRIVATE_KEY").replace(/\\n/g, "\n");
+    },
+    get calendarId() {
+      return read("GOOGLE_CALENDAR_ID", "primary");
+    },
     /// Workspace user to impersonate via domain-wide delegation. Required for
     /// attendee invites — a bare service account cannot invite without it.
-    impersonateUser: process.env.GOOGLE_IMPERSONATE_USER ?? "",
+    get impersonateUser() {
+      return read("GOOGLE_IMPERSONATE_USER");
+    },
     get enabled() {
-      return Boolean(process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY);
+      return Boolean(this.clientEmail && this.privateKey);
     },
   },
 
   anthropic: {
-    apiKey: process.env.ANTHROPIC_API_KEY ?? "",
-    model: process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5",
+    get apiKey() {
+      return read("ANTHROPIC_API_KEY");
+    },
+    get model() {
+      return read("ANTHROPIC_MODEL", "claude-opus-5-5");
+    },
     /// Vision runs on its own setting: triage is a judgement call worth the
     /// better model, bulk turnover checks are not.
-    visionModel: process.env.ANTHROPIC_VISION_MODEL ?? "claude-opus-5-5",
+    get visionModel() {
+      return read("ANTHROPIC_VISION_MODEL", this.model);
+    },
     get enabled() {
-      return Boolean(process.env.ANTHROPIC_API_KEY);
+      return Boolean(this.apiKey);
     },
   },
 
-  cronSecret: process.env.CRON_SECRET ?? "",
+  get cronSecret() {
+    return read("CRON_SECRET");
+  },
 
   storage: {
     /// "local" writes to disk; "s3" targets any S3-compatible bucket.
-    driver: (process.env.STORAGE_DRIVER ?? "local") as "local" | "s3",
-    localDir: process.env.STORAGE_LOCAL_DIR ?? "./uploads",
+    get driver() {
+      return (read("STORAGE_DRIVER", "local") === "s3" ? "s3" : "local") as "local" | "s3";
+    },
+    get localDir() {
+      return read("STORAGE_LOCAL_DIR", "./uploads");
+    },
     /// Cap on a single upload, after the browser has already downscaled it.
-    maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES ?? 15 * 1024 * 1024),
+    get maxUploadBytes() {
+      return Number(read("MAX_UPLOAD_BYTES", String(15 * 1024 * 1024)));
+    },
     s3: {
-      bucket: process.env.S3_BUCKET ?? "",
-      region: process.env.S3_REGION ?? "us-east-1",
-      endpoint: process.env.S3_ENDPOINT ?? "",
-      accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
-      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
-      forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
-      signedUrlSeconds: Number(process.env.S3_SIGNED_URL_SECONDS ?? 3600),
+      get bucket() {
+        return read("S3_BUCKET");
+      },
+      get region() {
+        return read("S3_REGION", "us-east-1");
+      },
+      get endpoint() {
+        return read("S3_ENDPOINT");
+      },
+      get accessKeyId() {
+        return read("S3_ACCESS_KEY_ID");
+      },
+      get secretAccessKey() {
+        return read("S3_SECRET_ACCESS_KEY");
+      },
+      get forcePathStyle() {
+        return read("S3_FORCE_PATH_STYLE") === "true";
+      },
+      get signedUrlSeconds() {
+        return Number(read("S3_SIGNED_URL_SECONDS", "3600"));
+      },
     },
   },
 };

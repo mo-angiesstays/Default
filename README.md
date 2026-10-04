@@ -98,6 +98,15 @@ corrections are flagged.
 Cleaners and maintenance staff only ever load their own tasks; opening someone
 else's is refused by the API, not just hidden in the UI.
 
+## Testing it
+
+Never run it before? **[TESTING.md](TESTING.md)** is an ordered walkthrough —
+deploy, the core loop, phone, then each integration, with what to check at each
+step and what tends to go wrong.
+
+`npm run doctor` checks every integration and names the variable or step that
+fixes each problem.
+
 ## Running it
 
 Requires Node 20+ and PostgreSQL 14+. `ffmpeg` is optional — without it
@@ -109,8 +118,14 @@ cp .env.example .env          # then fill it in — see below
 docker compose up -d db       # or point DATABASE_URL at your own Postgres
 npm run db:migrate            # create the schema
 npm run db:seed               # demo team, properties and checklists
+npm run doctor                # check what's configured and what isn't
 npm run dev
 ```
+
+**To deploy**, the repo ships a `Dockerfile` (with ffmpeg) and a `render.yaml`
+blueprint that provisions the web service, Postgres, a disk for photos, and the
+hourly sync job. Railway and Fly work from the same Dockerfile. Migrations run on
+boot, so a deploy is one step.
 
 Sign in at http://localhost:3000 as `manager@example.com` / `changeme123`.
 **Change the seeded passwords before putting real data in.**
