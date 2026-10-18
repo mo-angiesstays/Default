@@ -224,6 +224,10 @@ export function mapReservationStatus(
     case "inquiry":
     case "inquirypreapproved":
     case "inquirydenied":
+    // An inquiry Hostaway closed out on its own, and one it never allowed to
+    // become a booking. Neither is a stay, so neither earns a clean.
+    case "inquirynotpossible":
+    case "expired":
       return "INQUIRY";
     case "ownerstay":
       return "OWNER_STAY";
