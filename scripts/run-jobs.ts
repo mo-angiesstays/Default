@@ -9,6 +9,9 @@
  * Steps: hostaway, deepclean, schedule, calendar
  */
 
+// First, so .env is loaded before anything reads process.env.
+import "../src/lib/load-env";
+
 import { env } from "../src/lib/env";
 import { runCalendarSync } from "../src/lib/integrations/google-calendar";
 import { runDeepCleanGeneration } from "../src/lib/jobs/deep-clean";

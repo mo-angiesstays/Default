@@ -7,6 +7,9 @@
  * names the variable or step that fixes it, and nothing here changes any data.
  */
 
+// First, so .env is loaded before anything reads process.env.
+import "../src/lib/load-env";
+
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { env } from "../src/lib/env";
