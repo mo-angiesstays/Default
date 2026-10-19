@@ -5,7 +5,7 @@ import {
   fetchListings,
   fetchReservations,
   hourToHHMM,
-  mapReservationStatus,
+  classifyReservationStatus,
   type HostawayReservation,
 } from "@/lib/integrations/hostaway";
 import { createTask } from "@/lib/tasks";
@@ -122,6 +122,9 @@ export async function syncReservationsAndTurnovers(options?: {
   }
 
   const unmatched = new Set<string>();
+  // Statuses Hostaway sent that this code has never been taught, counted so the
+  // summary can name them. Nothing was scheduled for these.
+  const unrecognisedStatuses = new Map<string, number>();
 
   for (const [listingId, group] of byListingReservations) {
     const property = byListing.get(listingId);
@@ -134,7 +137,13 @@ export async function syncReservationsAndTurnovers(options?: {
     const zone = property.timezone || env.defaultTimezone;
 
     for (const reservation of group) {
-      const status = mapReservationStatus(reservation.status);
+      const { status, schedulesClean, recognised } = classifyReservationStatus(
+        reservation.status,
+      );
+      if (!recognised) {
+        const raw = reservation.status ?? "(none)";
+        unrecognisedStatuses.set(raw, (unrecognisedStatuses.get(raw) ?? 0) + 1);
+      }
 
       const checkOutDate = DateTime.fromISO(reservation.departureDate, { zone });
       const checkInDate = DateTime.fromISO(reservation.arrivalDate, { zone });
@@ -155,12 +164,12 @@ export async function syncReservationsAndTurnovers(options?: {
       );
 
       // The next arrival at this property tells us whether it's a same-day turn.
-      // Cancelled and inquiry bookings must not set a deadline — nobody is coming.
+      // Only a real stay sets that deadline — nobody is coming for the rest.
       const nextArrival = group.find(
         (other) =>
           other.id !== reservation.id &&
           other.arrivalDate >= reservation.departureDate &&
-          !["CANCELLED", "INQUIRY"].includes(mapReservationStatus(other.status)),
+          classifyReservationStatus(other.status).schedulesClean,
       );
       const sameDayTurn = nextArrival?.arrivalDate === reservation.departureDate;
       const nextCheckInAt = nextArrival
@@ -218,8 +227,9 @@ export async function syncReservationsAndTurnovers(options?: {
       const dedupeKey = `hostaway:turnover:${reservation.id}`;
       const existingTask = await prisma.task.findUnique({ where: { dedupeKey } });
 
-      // A cancelled booking should not leave a phantom clean on the board.
-      if (status === "CANCELLED" || status === "INQUIRY") {
+      // Anything that isn't a stay should not leave a phantom clean on the
+      // board — including a status we don't recognise, which the summary names.
+      if (!schedulesClean) {
         if (existingTask && !["COMPLETED", "VERIFIED", "CANCELLED"].includes(existingTask.status)) {
           await prisma.task.update({
             where: { id: existingTask.id },
@@ -227,7 +237,9 @@ export async function syncReservationsAndTurnovers(options?: {
               status: "CANCELLED",
               description: appendNote(
                 existingTask.description,
-                `Auto-cancelled: Hostaway reservation is ${status.toLowerCase()}.`,
+                recognised
+                  ? `Auto-cancelled: Hostaway reservation is ${status.toLowerCase()}.`
+                  : `Auto-cancelled: Hostaway reports status "${reservation.status}", which TurnKeep does not recognise as a booking.`,
               ),
               // Queue the calendar event for removal.
               googleSyncedAt: null,
@@ -281,6 +293,16 @@ export async function syncReservationsAndTurnovers(options?: {
   if (unmatched.size) {
     summary.warnings.push(
       `${unmatched.size} Hostaway listing(s) have no matching property. Run "Import listings" to link them.`,
+    );
+  }
+
+  // Loud on purpose. A status nobody has taught this code schedules nothing, so
+  // if it turns out to mean a real booking the only trace is this line — it
+  // needs to be specific enough to act on from the settings screen alone.
+  for (const [raw, count] of unrecognisedStatuses) {
+    summary.warnings.push(
+      `Hostaway sent ${count} reservation(s) with status "${raw}", which TurnKeep does not recognise. ` +
+        `No cleans were scheduled for them. If that status means a real booking, it has to be added to the sync.`,
     );
   }
 
