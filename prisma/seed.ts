@@ -1,3 +1,6 @@
+// First, so .env is loaded before anything reads process.env.
+import "../src/lib/load-env";
+
 import { PrismaClient, type ChecklistType } from "@prisma/client";
 import bcrypt from "bcryptjs";
 

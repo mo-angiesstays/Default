@@ -212,22 +212,58 @@ export function hourToHHMM(hour: number | null | undefined, fallback: string): s
   return `${String(h).padStart(2, "0")}:00`;
 }
 
-export function mapReservationStatus(
+type ReservationStatus = "NEW" | "MODIFIED" | "CANCELLED" | "INQUIRY" | "OWNER_STAY";
+
+/** Statuses that mean somebody stayed and is leaving — these earn a clean. */
+const STAYS: Record<string, ReservationStatus> = {
+  new: "NEW",
+  modified: "MODIFIED",
+  ownerstay: "OWNER_STAY",
+};
+
+/** Statuses known to mean nobody stayed, so there is nothing to clean up after. */
+const NOT_STAYS: Record<string, ReservationStatus> = {
+  cancelled: "CANCELLED",
+  canceled: "CANCELLED",
+  inquiry: "INQUIRY",
+  inquirypreapproved: "INQUIRY",
+  inquirydenied: "INQUIRY",
+  // An inquiry Hostaway never allowed to become a booking, and one it closed
+  // out on its own. Both look like bookings in the feed; neither is one.
+  inquirynotpossible: "INQUIRY",
+  expired: "INQUIRY",
+};
+
+export type ReservationClassification = {
+  status: ReservationStatus;
+  /** Whether this reservation should put a turnover clean on the board. */
+  schedulesClean: boolean;
+  /** False when Hostaway sent a status this code has never been taught. */
+  recognised: boolean;
+};
+
+/**
+ * Decides what a Hostaway reservation status means for scheduling.
+ *
+ * Deliberately an allowlist. The earlier version named the statuses to reject
+ * and let everything else through as a confirmed booking, so the day Hostaway
+ * sent "expired" — a dead inquiry — the sync booked a cleaner for it. Anything
+ * not named here now schedules nothing and is reported instead, because the
+ * cost of the two mistakes is not symmetric: an unwanted clean wastes a trip,
+ * a missed one leaves a guest walking into a dirty unit. Staying silent is
+ * what makes a missed clean dangerous, so an unknown status is always
+ * surfaced in the sync summary while there is still time to act on it.
+ */
+export function classifyReservationStatus(
   status: string | null | undefined,
-): "NEW" | "MODIFIED" | "CANCELLED" | "INQUIRY" | "OWNER_STAY" {
-  switch ((status ?? "").toLowerCase()) {
-    case "modified":
-      return "MODIFIED";
-    case "cancelled":
-    case "canceled":
-      return "CANCELLED";
-    case "inquiry":
-    case "inquirypreapproved":
-    case "inquirydenied":
-      return "INQUIRY";
-    case "ownerstay":
-      return "OWNER_STAY";
-    default:
-      return "NEW";
-  }
+): ReservationClassification {
+  const key = (status ?? "").toLowerCase();
+
+  const stay = STAYS[key];
+  if (stay) return { status: stay, schedulesClean: true, recognised: true };
+
+  const notStay = NOT_STAYS[key];
+  if (notStay) return { status: notStay, schedulesClean: false, recognised: true };
+
+  return { status: "INQUIRY", schedulesClean: false, recognised: false };
 }
