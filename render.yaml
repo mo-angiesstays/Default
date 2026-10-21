@@ -50,7 +50,10 @@ services:
     dockerfilePath: ./Dockerfile
     # Hourly keeps turnovers current as bookings change.
     schedule: "0 * * * *"
-    dockerCommand: sh -c 'curl -fsS -X POST "$APP_URL/api/cron" -H "Authorization: Bearer $CRON_SECRET"'
+    # Block scalar, because the "Authorization: Bearer" colon makes this
+    # unparseable as a plain YAML value — the blueprint is rejected outright.
+    dockerCommand: >-
+      sh -c 'curl -fsS -X POST "$APP_URL/api/cron" -H "Authorization: Bearer $CRON_SECRET"'
     envVars:
       - key: APP_URL
         sync: false
