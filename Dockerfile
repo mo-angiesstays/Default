@@ -48,4 +48,11 @@ USER app
 EXPOSE 3000
 
 # Apply any pending migrations before serving, so a deploy is one step.
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+#
+# Prisma is invoked through its entry point rather than `npx prisma`, because
+# only the package directories are copied above and not node_modules/.bin, so
+# the shim npx looks for does not exist here. `npx prisma` therefore died with
+# "sh: prisma: not found" the moment the container started — after a build that
+# had succeeded, which made it look like an application fault rather than a
+# missing file.
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && node server.js"]
