@@ -29,6 +29,24 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # its salt handling, which fails at the first password hash.
 RUN npx prisma generate && npx next build && node_modules/.bin/esbuild prisma/seed.ts --bundle --platform=node --format=cjs --target=node22 --external:@prisma/client --outfile=prisma/seed.cjs
 
+# The Prisma CLI, installed with its own dependency tree.
+#
+# Copying node_modules/prisma out of the builder is not enough: the CLI loads
+# @prisma/config, which loads `effect`, which loads more again — 25 packages in
+# all. Picking directories out by hand gets one more "Cannot find module" per
+# attempt. Installing it here lets npm resolve the tree properly, and keeps the
+# runtime image clear of the 1.1GB of build tooling a full node_modules carries.
+# The version follows package.json so the CLI cannot drift from the client.
+# The file is copied under another name on purpose: with a package.json beside
+# it, npm installs that whole project — 541 packages — instead of the one asked
+# for. Without it, this stage is 35 packages and 133MB.
+FROM node:22-alpine AS prismacli
+WORKDIR /cli
+COPY package.json ./version-source.json
+RUN npm install --no-save --no-audit --no-fund \
+      "prisma@$(node -p "require('./version-source.json').devDependencies.prisma")" \
+ && rm version-source.json
+
 FROM node:22-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache ffmpeg openssl \
@@ -43,11 +61,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=app:app /app/.next/standalone ./
 COPY --from=builder --chown=app:app /app/.next/static ./.next/static
 
-# Migrations and the seed run from the container, so the CLI and schema come too.
+# Migrations and the seed run from the container, so the CLI and schema come
+# too. The CLI and its dependencies arrive first; the generated client and
+# engines follow, so the build's own artefacts win on anything that overlaps.
 COPY --from=builder /app/prisma ./prisma
+COPY --from=prismacli /cli/node_modules ./node_modules
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
 # Where the local storage driver writes. Mount a volume here, or use S3.
 RUN mkdir -p /app/uploads && chown app:app /app/uploads
