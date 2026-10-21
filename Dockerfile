@@ -18,7 +18,16 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Next needs these present at build time; the real values are injected at runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npx prisma generate && npx next build
+# The second command bundles the seed, which is the only way to create the
+# first login. The runtime image has neither tsx to run the .ts nor bcryptjs in
+# node_modules — Next bundles that into its own server chunks, where a
+# standalone script cannot reach it — so the seed is inlined here into one file
+# that needs nothing but the Prisma client the image already carries. It ships
+# with prisma/ below, and runs in a deployed container as:
+#   node prisma/seed.cjs
+# CJS rather than ESM: bcryptjs is CommonJS, and the ESM interop wrapper breaks
+# its salt handling, which fails at the first password hash.
+RUN npx prisma generate && npx next build && node_modules/.bin/esbuild prisma/seed.ts --bundle --platform=node --format=cjs --target=node22 --external:@prisma/client --outfile=prisma/seed.cjs
 
 FROM node:22-alpine AS runner
 WORKDIR /app
