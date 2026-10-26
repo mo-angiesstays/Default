@@ -16,6 +16,18 @@ import { formatInZone } from "@/lib/time";
 
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 
+/**
+ * Prefix on every event title.
+ *
+ * The events already carry a turnkeepTaskId in their extended properties, which
+ * is how this code finds them again — but that is invisible in the calendar
+ * itself. While turnovers are also being scheduled by hand, somebody looking at
+ * a week needs to see at a glance which entries this app put there and which a
+ * person did, so that a duplicate is obvious rather than a thing you notice
+ * when two cleaners turn up.
+ */
+const EVENT_PREFIX = "[TurnKeep] ";
+
 function getCalendar(): calendar_v3.Calendar {
   if (!env.google.enabled) {
     throw new Error(
@@ -95,7 +107,7 @@ export function buildCalendarEvent(
   ].filter(Boolean);
 
   return {
-    summary: `${task.priority === "URGENT" ? "🔴 " : ""}${task.title}`,
+    summary: `${EVENT_PREFIX}${task.priority === "URGENT" ? "🔴 " : ""}${task.title}`,
     description: lines.join("\n"),
     location: location || undefined,
     start: { dateTime: start.toISOString(), timeZone: task.property.timezone },
