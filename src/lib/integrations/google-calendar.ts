@@ -7,9 +7,13 @@ import { formatInZone } from "@/lib/time";
 /**
  * Google Calendar mirror.
  *
- * Every scheduled task becomes a calendar event with the assignee (and the
- * managers) as attendees, so staff get a real invite in the calendar they
- * already use. Uses a service account; attendee invitations require
+ * Every scheduled task becomes a calendar event on the calendar named by
+ * GOOGLE_CALENDAR_ID, with the assignee invited so the person doing the work
+ * gets it in the calendar they already use. Point GOOGLE_CALENDAR_ID at a
+ * calendar of its own rather than somebody's primary one: the whole schedule
+ * is then a layer the team can switch on and off, and it never crowds out
+ * what a person put in their own calendar by hand.
+ * Uses a service account; attendee invitations require
  * domain-wide delegation, so GOOGLE_IMPERSONATE_USER must name a Workspace
  * user the service account may act as.
  */
@@ -166,15 +170,13 @@ export async function syncTaskToCalendar(taskId: string): Promise<string | null>
     return null;
   }
 
-  const managers = await prisma.user.findMany({
-    where: { role: "MANAGER", active: true },
-    select: { email: true },
-  });
-
-  const attendees = [
-    ...(task.assignee?.email ? [task.assignee.email] : []),
-    ...managers.map((m) => m.email),
-  ].filter((email, index, all) => all.indexOf(email) === index);
+  // Only the person doing the work is invited. Inviting every manager as well
+  // meant that on an installation where everybody is a manager, one night's
+  // turnovers produced hundreds of invitations — 76 cleans times four people —
+  // none of which told anyone anything they could act on. Managers see the
+  // whole schedule by looking at the calendar the events live on, which is
+  // what a calendar is for; an invitation should mean "this one is yours".
+  const attendees = task.assignee?.email ? [task.assignee.email] : [];
 
   const body = buildCalendarEvent(task, attendees);
 
