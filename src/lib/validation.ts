@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { env } from "@/lib/env";
+
 export const roleEnum = z.enum(["MANAGER", "CLEANER", "MAINTENANCE"]);
 export const taskTypeEnum = z.enum([
   "TURNOVER",
@@ -69,7 +71,7 @@ export const createUserSchema = z.object({
   password: z.string().min(8, "Use at least 8 characters"),
   role: roleEnum,
   phone: z.string().optional().nullable(),
-  timezone: z.string().default("America/New_York"),
+  timezone: z.string().default(() => env.defaultTimezone),
   skills: z.array(z.string()).default([]),
   maxDailyTasks: z.number().int().min(1).max(20).default(4),
   hourlyRate: z.number().nonnegative().nullish(),
@@ -96,7 +98,7 @@ export const propertySchema = z.object({
   country: z.string().default("US"),
   lat: z.number().nullish(),
   lng: z.number().nullish(),
-  timezone: z.string().default("America/New_York"),
+  timezone: z.string().default(() => env.defaultTimezone),
   bedrooms: z.number().int().min(0).default(1),
   bathrooms: z.number().min(0).default(1),
   hostawayListingId: z.string().nullish(),
