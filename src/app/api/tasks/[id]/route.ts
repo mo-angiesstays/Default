@@ -11,9 +11,38 @@ import {
 import { prisma } from "@/lib/db";
 import { notifyManagers, notifyUsers } from "@/lib/notifications";
 import { outstandingRequiredItems } from "@/lib/tasks";
+import { minutesBetween } from "@/lib/time";
 import { updateTaskSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Clocks someone out when they finish the job they were clocked into.
+ *
+ * Marking a task complete and stopping the clock were two separate actions,
+ * and the first one looks like finishing — so the clock kept running after the
+ * cleaner had gone home, and the hours it recorded were whatever happened
+ * before somebody noticed. The clock stops at the moment the work was marked
+ * complete, not when the mistake is spotted.
+ *
+ * Only the entry for this task and this person is touched: a clock-in against
+ * some other job is still running for a reason.
+ */
+async function closeOpenTimeEntry(taskId: string, userId: string, clockOutAt: Date) {
+  const open = await prisma.timeEntry.findFirst({
+    where: { taskId, userId, clockOutAt: null },
+    orderBy: { clockInAt: "desc" },
+  });
+  if (!open) return;
+
+  await prisma.timeEntry.update({
+    where: { id: open.id },
+    data: {
+      clockOutAt,
+      minutes: Math.max(0, minutesBetween(open.clockInAt, clockOutAt)),
+    },
+  });
+}
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -142,6 +171,7 @@ export const PATCH = handler(async (request: Request, context: Context) => {
         throw badRequest(parts.join(", and "));
       }
       data.completedAt = new Date();
+      await closeOpenTimeEntry(id, viewer.id, data.completedAt as Date);
     }
 
     if (input.status === "IN_PROGRESS" && !task.startedAt) data.startedAt = new Date();
