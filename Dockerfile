@@ -49,7 +49,7 @@ RUN npm install --no-save --no-audit --no-fund \
 
 FROM node:22-alpine AS runner
 WORKDIR /app
-RUN apk add --no-cache ffmpeg openssl \
+RUN apk add --no-cache ffmpeg openssl curl \
  && addgroup -S app && adduser -S app -G app
 
 ENV NODE_ENV=production
@@ -65,6 +65,7 @@ COPY --from=builder --chown=app:app /app/.next/static ./.next/static
 # too. The CLI and its dependencies arrive first; the generated client and
 # engines follow, so the build's own artefacts win on anything that overlaps.
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
 COPY --from=prismacli /cli/node_modules ./node_modules
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma

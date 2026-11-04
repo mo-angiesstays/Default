@@ -50,10 +50,11 @@ services:
     dockerfilePath: ./Dockerfile
     # Hourly keeps turnovers current as bookings change.
     schedule: "0 * * * *"
-    # Block scalar, because the "Authorization: Bearer" colon makes this
-    # unparseable as a plain YAML value — the blueprint is rejected outright.
-    dockerCommand: >-
-      sh -c 'curl -fsS -X POST "$APP_URL/api/cron" -H "Authorization: Bearer $CRON_SECRET"'
+    # Two words, no quotes, no shell. The inline curl this replaces never ran
+    # once in a fortnight: the quoting did not survive into the container, so
+    # the shell took the whole command line as a program name and said "not
+    # found" every hour, while the dashboard showed the job firing on time.
+    dockerCommand: node scripts/run-cron.mjs
     envVars:
       - key: APP_URL
         sync: false
